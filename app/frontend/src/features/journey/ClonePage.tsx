@@ -54,6 +54,13 @@ export function ClonePage() {
     try {
       const res = await postIdeLaunch({ userId: user.id, ide: 'VSCODE', repositoryId: meta?.repositoryId })
       setIdeInstructions(res.instructions)
+      if (res.deepLinkUrl) {
+        // BR07: 브라우저는 로컬 앱을 직접 실행할 수 없다 — 할 수 있는 건 OS에 등록된 커스텀
+        // URL 스킴(vscode://...)으로 이동시켜 OS가 설치된 IDE로 핸드오프하도록 "시도"하는
+        // 것뿐이다. 성공/실패 여부는 JS가 알 수 없으므로(OS가 브라우저에 알려주지 않음),
+        // 항상 아래 수동 Fallback(명령 복사)을 함께 보여준다.
+        window.location.href = res.deepLinkUrl
+      }
     } finally {
       setIdeOpened(true)
     }
@@ -82,7 +89,9 @@ export function ClonePage() {
         {ideOpened && (
           <div className="autoresult" style={{ marginTop: 12 }}>
             <div className="callout g">
-              💻 {ideInstructions ?? 'IDE를 열었어요 — 방금 클론한 폴더를 확인하세요.'}
+              💻 {ideDeepLink
+                ? 'VS Code를 여는 요청을 보냈어요 — 설치돼 있다면 잠시 후 열립니다. 안 열리면 아래 안내대로 명령을 직접 실행하세요.'
+                : (ideInstructions ?? '이 IDE는 자동 실행 Deep Link를 지원하지 않아요 — 아래 명령을 직접 실행해주세요.')}
             </div>
           </div>
         )}
