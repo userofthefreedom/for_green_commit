@@ -51,6 +51,12 @@ PostgreSQL+pgvector / Redis / Neo4j / MinIO / Docker
    실제 값을 채웁니다. (`.env`는 커밋되지 않습니다.)
 
 ## 현재 진행 상태
-Phase 0(모노레포 부트스트랩), Phase 1(MVP 엔티티/API/화면 라우팅 스캐폴드) 완료.
-다음은 Phase 2(실제 GitHub OAuth 로그인 게이트) — 진행 전 `docs/github-oauth-app-guide.txt`대로
-GitHub OAuth App을 발급해야 합니다.
+**MVP E2E 완성.** 회원가입(GitHub OAuth 실로그인) → 추가 프로필/튜토리얼 → Repository·Issue
+추천/선택 → Journey(Fork·Clone·Repo/Issue Brief·질문 Coach) → Commit·PR 등록 → PR 상태 1회
+조회 → 나의 기여 History까지 전 구간이 실제로 동작합니다.
+
+기획서 표21 기준 "필수 확장"·"선택" 범위(PR 상태 **주기적** 추적, 알림 보관함, Knowledge
+Graph, Orchestrator 실연동, Local GPU 실분석, 게임화 실데이터, Repository 확장 배치,
+Observability 등)는 이번 라운드에서 의도적으로 구현하지 않았습니다 — 실제 로직 없이 엔티티/
+화면 뼈대만 존재합니다(코드 주석에 `Phase 99` 또는 `팀 확인 후 구현`으로 표시되어 있어요).
+어떤 항목을 다음에 만들지는 팀 리뷰 후 결정합니다.
