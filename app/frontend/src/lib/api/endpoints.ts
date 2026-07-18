@@ -174,12 +174,17 @@ export function patchJourneyStep(journeyId: string, step: string, payload: Updat
   return apiClient<Journey>(`/journeys/${journeyId}/steps/${step}`, { method: 'PATCH', body: payload })
 }
 
-// 9. POST /automations/fork — Fork 자동화 (GitHub API, BR06 사용자 확인 후 실행)
+// 9. POST /automations/fork — Fork 자동화 (BR06 사용자 확인 후 실행; 프로토타입은 성공 시뮬레이션)
 export interface AutomateForkRequest {
+  userId: string
+  sessionId?: string | null
   repositoryId: string
 }
 export interface AutomateForkResponse {
-  forkedRepositoryUrl: string
+  executionId: string
+  status: string
+  forkedRepoUrl: string
+  resultDetail: string
 }
 export function postAutomationFork(payload: AutomateForkRequest) {
   return apiClient<AutomateForkResponse>('/automations/fork', { method: 'POST', body: payload })
@@ -187,27 +192,34 @@ export function postAutomationFork(payload: AutomateForkRequest) {
 
 // 10. POST /automations/clone/prepare — Clone 명령/IDE Deep Link 준비 (BR07, 무단 로컬 실행 금지)
 export interface PrepareCloneRequest {
+  userId: string
+  sessionId?: string | null
   repositoryId: string
+  ide?: PrimaryIde
 }
 export interface PrepareCloneResponse {
   cloneCommand: string
-  ideDeepLink?: string
+  ideDeepLink: string | null
+  fallbackUrl: string
 }
 export function postAutomationClonePrepare(payload: PrepareCloneRequest) {
   return apiClient<PrepareCloneResponse>('/automations/clone/prepare', { method: 'POST', body: payload })
 }
 
 // 11. POST /ide-launch — 사용자 클릭 기반 IDE 실행 Handoff
-export interface IdeLaunchRequest {
-  journeyId: string
-  targetPath: string
+export interface IdeLaunchRequestPayload {
+  userId: string
+  ide: PrimaryIde
+  repositoryId?: string | null
 }
-export interface IdeLaunchResponse {
-  launched: boolean
-  fallbackInstruction?: string
+export interface IdeLaunchResult {
+  attemptId: string
+  deepLinkUrl: string | null
+  succeeded: boolean
+  instructions: string
 }
-export function postIdeLaunch(payload: IdeLaunchRequest) {
-  return apiClient<IdeLaunchResponse>('/ide-launch', { method: 'POST', body: payload })
+export function postIdeLaunch(payload: IdeLaunchRequestPayload) {
+  return apiClient<IdeLaunchResult>('/ide-launch', { method: 'POST', body: payload })
 }
 
 // 12. POST /ai/orchestrations — 질문 Coach 오케스트레이션 (BR08/BR09 — 정답 선노출 금지, Evidence 구분)

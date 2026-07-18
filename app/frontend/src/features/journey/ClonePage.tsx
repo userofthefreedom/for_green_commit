@@ -1,25 +1,67 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-const CLONE_COMMAND = 'git clone https://github.com/jiyeong/teammates.git'
+import { useAuth } from '../../app/AuthContext'
+import { useJourney } from '../../app/JourneyContext'
+import { postAutomationClonePrepare, postIdeLaunch } from '../../lib/api/endpoints'
 
 /**
- * SCR010 Clone·IDE Handoff — "명령 복사·IDE Clone/열기·Fallback" (기획서 표19, BR07).
- * v3 prototype #clone 화면을 이관했다. 이 단계는 로컬 명령을 대신 실행하지 않고 —
- * 명령 복사 + 지원 IDE의 Clone/열기 Deep Link 호출만 한다는 BR07을 그대로 반영한다.
+ * SCR010 Clone·IDE Handoff — "명령 복사·IDE Clone/열기·Fallback" (기획서 표19, F010/F013, BR07).
+ * Phase 5: 실제 POST /automations/clone/prepare로 명령/Deep Link를 받고, "IDE에서 열기"는
+ * 실제 POST /ide-launch를 호출한다. IDE 선택 값을 조회하는 API가 아직 없어(온보딩 GET
+ * 미구현) VS Code를 기본값으로 쓴다 — Phase 99 이후 프로필 조회가 생기면 대체.
  */
 export function ClonePage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { journey, meta, updateStep } = useJourney()
+
+  const [cloneCommand, setCloneCommand] = useState<string | null>(null)
+  const [ideDeepLink, setIdeDeepLink] = useState<string | null>(null)
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [ideOpened, setIdeOpened] = useState(false)
+  const [ideInstructions, setIdeInstructions] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user || !meta) return
+    postAutomationClonePrepare({
+      userId: user.id,
+      sessionId: journey?.sessionId,
+      repositoryId: meta.repositoryId,
+      ide: 'VSCODE',
+    })
+      .then((res) => {
+        setCloneCommand(res.cloneCommand)
+        setIdeDeepLink(res.ideDeepLink)
+        setFallbackUrl(res.fallbackUrl)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, user])
 
   async function handleCopy() {
+    if (!cloneCommand) return
     try {
-      await navigator.clipboard.writeText(CLONE_COMMAND)
+      await navigator.clipboard.writeText(cloneCommand)
     } catch {
       // 클립보드 권한이 없어도 명령 텍스트는 화면에 그대로 보인다.
     }
     setCopied(true)
+  }
+
+  async function handleOpenIde() {
+    if (!user) return
+    try {
+      const res = await postIdeLaunch({ userId: user.id, ide: 'VSCODE', repositoryId: meta?.repositoryId })
+      setIdeInstructions(res.instructions)
+    } finally {
+      setIdeOpened(true)
+    }
+  }
+
+  async function goNext(action: 'COMPLETE' | 'SKIP') {
+    if (journey) await updateStep('CLONE', { action })
+    navigate('/journey/brief')
   }
 
   return (
@@ -28,23 +70,31 @@ export function ClonePage() {
       <p className="lede">이 단계는 자동화하지 않아요. 아래 명령을 복사해 직접 내려받고, IDE로 열어요.</p>
       <div className="card">
         <div className="eyebrow">1. 이 명령을 복사해 터미널에 붙여넣기</div>
-        <div className="code">{CLONE_COMMAND}</div>
+        <div className="code">{cloneCommand ?? '불러오는 중…'}</div>
         <div className="row" style={{ marginTop: 10 }}>
-          <button type="button" className="btn auto" onClick={handleCopy}>
+          <button type="button" className="btn auto" onClick={handleCopy} disabled={!cloneCommand}>
             📋 git 명령 복사{copied ? '됨' : ''}
           </button>
-          <button type="button" className="btn" onClick={() => setIdeOpened(true)}>
+          <button type="button" className="btn" onClick={handleOpenIde}>
             💻 IDE에서 열기 ↗
           </button>
         </div>
         {ideOpened && (
           <div className="autoresult" style={{ marginTop: 12 }}>
-            <div className="callout g">💻 IDE(VS Code)를 열었어요 — 방금 클론한 폴더를 확인하세요.</div>
+            <div className="callout g">
+              💻 {ideInstructions ?? 'IDE를 열었어요 — 방금 클론한 폴더를 확인하세요.'}
+            </div>
           </div>
         )}
         <p className="note">
-          IDE가 없거나 Deep Link가 열리지 않으면 위 명령을 터미널에 직접 붙여넣고, 평소 쓰는
-          에디터로 폴더를 열어주세요 (BR07 수동 Fallback).
+          IDE가 없거나 Deep Link({ideDeepLink ?? '미지원 IDE'})가 열리지 않으면 위 명령을 터미널에
+          직접 붙여넣거나{' '}
+          {fallbackUrl && (
+            <a href={fallbackUrl} target="_blank" rel="noreferrer">
+              저장소 페이지 ↗
+            </a>
+          )}
+          에서 직접 진행하세요 (BR07 수동 Fallback).
         </p>
 
         <div className="eyebrow" style={{ marginTop: 16 }}>
@@ -54,10 +104,10 @@ export function ClonePage() {
           프로젝트가 잘 열렸는지 확인한 뒤, 다시 이 창으로 돌아와 학습을 시작하세요.
         </p>
         <div className="stepfoot">
-          <button type="button" className="btn sm">
+          <button type="button" className="btn sm" onClick={() => void goNext('SKIP')}>
             이 단계 건너뛰기 (다음부터 숨김)
           </button>
-          <button type="button" className="btn p" style={{ marginLeft: 'auto' }} onClick={() => navigate('/journey/brief')}>
+          <button type="button" className="btn p" style={{ marginLeft: 'auto' }} onClick={() => void goNext('COMPLETE')}>
             IDE 확인했어요 · 다음 →
           </button>
         </div>
