@@ -1,0 +1,45 @@
+# ==== Claude/Harness 작업 문서 (팀 공유 대상 아님) ====
+.harness/
+*.claude-scratch/
+
+# ==== 환경변수 / 시크릿 ====
+.env
+.env.*.local
+app/infra/.env
+**/*.local.env
+
+# ==== Node / Vite (app/frontend) ====
+node_modules/
+app/frontend/dist/
+app/frontend/.vite/
+app/frontend/coverage/
+
+# ==== Java / Gradle (app/backend) ====
+app/backend/.gradle/
+app/backend/build/
+app/backend/out/
+**/*.class
+!app/backend/gradle/wrapper/gradle-wrapper.jar
+
+# ==== Python / FastAPI (app/ai) ====
+app/ai/.venv/
+app/ai/**/__pycache__/
+app/ai/**/*.pyc
+app/ai/.pytest_cache/
+app/ai/.mypy_cache/
+app/ai/*.egg-info/
+
+# ==== Docker / 인프라 데이터 (app/infra) ====
+app/infra/.data/
+app/infra/**/volumes/
+
+# ==== IDE / OS ====
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# ==== 로그 ====
+*.log
+logs/

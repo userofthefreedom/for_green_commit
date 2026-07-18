@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: green-commit-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/greencommit}
+    username: ${SPRING_DATASOURCE_USERNAME:greencommit}
+    password: ${SPRING_DATASOURCE_PASSWORD:greencommit}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+  batch:
+    job:
+      enabled: false # Repository Batch 잡은 스케줄러가 직접 트리거 (Phase 8)
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# GitHub OAuth2 등록은 Phase 2에서 추가한다 (.env의 GITHUB_CLIENT_ID/SECRET 필요).
+# 그 전까지는 spring.security.oauth2.client.registration 설정을 넣지 않는다 —
+# 빈 client-id로 등록하면 부트 자체가 실패하기 때문이다.

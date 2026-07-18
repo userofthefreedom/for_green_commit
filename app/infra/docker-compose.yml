@@ -1,0 +1,117 @@
+name: green-commit
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: green-commit-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-greencommit}
+      POSTGRES_USER: ${POSTGRES_USER:-greencommit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-greencommit}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-greencommit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: green-commit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: green-commit-neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/greencommit}
+    ports:
+      - "7474:7474" # 브라우저 콘솔
+      - "7687:7687" # Bolt
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: green-commit-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-greencommit}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-greencommit123}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # 콘솔
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+    container_name: green-commit-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-greencommit}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-greencommit}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-greencommit}
+      SPRING_REDIS_HOST: redis
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    ports:
+      - "8080:8080"
+
+  ai-service:
+    build:
+      context: ../ai
+    container_name: green-commit-ai
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER:-greencommit}:${POSTGRES_PASSWORD:-greencommit}@postgres:5432/${POSTGRES_DB:-greencommit}
+      REDIS_URL: redis://redis:6379/0
+      NEO4J_URI: bolt://neo4j:7687
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: green-commit-frontend
+    ports:
+      - "8081:80"
+    profiles: ["prod"]
+
+  gpu-model-server:
+    build:
+      context: ./gpu-stub
+    container_name: green-commit-gpu-stub
+    ports:
+      - "8200:8200"
+    profiles: ["gpu-stub"]
+
+volumes:
+  pg-data:
+  redis-data:
+  neo4j-data:
+  minio-data:
