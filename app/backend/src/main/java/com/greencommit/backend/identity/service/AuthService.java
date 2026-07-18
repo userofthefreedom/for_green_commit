@@ -1,5 +1,6 @@
 package com.greencommit.backend.identity.service;
 
+import com.greencommit.backend.identity.dto.GitHubAccountResponse;
 import com.greencommit.backend.identity.dto.GitHubCallbackRequest;
 import com.greencommit.backend.identity.dto.UserResponse;
 import com.greencommit.backend.identity.entity.ConsentType;
@@ -53,6 +54,19 @@ public class AuthService {
     @Transactional(readOnly = true)
     public Optional<UserResponse> findByGithubId(Long githubId) {
         return userRepository.findByGithubId(githubId).map(this::toResponse);
+    }
+
+    /** F004: SCR003(GitHub 분석)이 보여줄, 로그인 시 저장된 실제 공개 프로필 Snapshot(BR02). */
+    @Transactional(readOnly = true)
+    public Optional<GitHubAccountResponse> getGithubAccountSummary(Long githubId) {
+        return userRepository.findByGithubId(githubId)
+                .flatMap(user -> gitHubAccountRepository.findByUserId(user.getId()))
+                .map(account -> new GitHubAccountResponse(
+                        account.getLogin(),
+                        account.getProfileUrl(),
+                        account.getPublicReposCount(),
+                        account.getFollowers(),
+                        account.getConnectedAt()));
     }
 
     private User upsertIdentity(Long githubId, String githubLogin, String email, String displayName,

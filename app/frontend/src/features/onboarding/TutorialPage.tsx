@@ -1,12 +1,34 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../app/AuthContext'
+import { postTutorialProgress } from '../../lib/api/endpoints'
 
 /**
  * SCR005 초보자 튜토리얼 — "오픈소스와 Fork→Merge 흐름" (기획서 표19, BR03).
  * v3 prototype의 #onboard 화면 카피를 그대로 이관했다. BR03에 따라 "오픈소스가
- * 처음"인 사용자에게 기본 노출되지만 스킵도 허용된다 — Phase 1은 스킵 상태 저장
- * (POST /tutorial/progress) 없이 라우팅만 존재한다.
+ * 처음"인 사용자에게 기본 노출되지만 스킵도 허용된다.
+ * Phase 3: 완료/스킵 상태를 실제로 POST /tutorial/progress에 저장한 뒤 추천 화면으로 이동한다.
  */
 export function TutorialPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [saving, setSaving] = useState(false)
+
+  async function finish(skipped: boolean) {
+    if (!user) return
+    setSaving(true)
+    try {
+      await postTutorialProgress({
+        userId: user.id,
+        completed: !skipped,
+        skipped,
+        currentStep: 'DONE',
+      })
+    } finally {
+      navigate('/recommend/repositories')
+    }
+  }
+
   return (
     <section>
       <h1>오픈소스가 뭐예요? 🌍</h1>
@@ -87,10 +109,13 @@ export function TutorialPage() {
           <b>자동화·건너뛰기</b>도 돼요.
         </div>
       </div>
-      <div className="center" style={{ marginTop: 22 }}>
-        <Link to="/auth/callback" className="btn p lg">
+      <div className="center row" style={{ marginTop: 22, justifyContent: 'center' }}>
+        <button className="btn sm" onClick={() => void finish(true)} disabled={saving}>
+          건너뛰기
+        </button>
+        <button className="btn p lg" onClick={() => void finish(false)} disabled={saving}>
           좋아, 시작해볼래 →
-        </Link>
+        </button>
       </div>
     </section>
   )

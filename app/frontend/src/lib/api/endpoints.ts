@@ -20,33 +20,67 @@ export function postAuthGithubCallback(payload: GithubCallbackRequest) {
   return apiClient<GithubCallbackResponse>('/auth/github/callback', { method: 'POST', body: payload })
 }
 
-// 2. PUT /users/me/onboarding — 추가 프로필(IDE·경험·관심·시간·첫 기여 여부)
+// 2. PUT /users/me/onboarding — 추가 프로필(IDE·경험·관심·시간·첫 기여 여부, 표13)
+// 실제 백엔드 계약(OnboardingRequest/Response, com.greencommit.backend.profile)에 맞춘 타입.
+export type PrimaryIde = 'VSCODE' | 'INTELLIJ_IDEA' | 'PYCHARM' | 'WEBSTORM' | 'ECLIPSE' | 'OTHER'
+export type ExperienceLevel = 'FIRST_TIME' | 'ONE_TO_TWO' | 'THREE_PLUS'
 export interface OnboardingUpdateRequest {
-  frameworkExperience?: 'NONE' | 'INTERMEDIATE' | 'PROFICIENT'
-  gitCollaborationExperience?: 'NONE' | 'INTERMEDIATE' | 'PROFICIENT'
-  externalPrCount?: '0' | '1_2' | '3_PLUS'
-  interests?: string[]
-  weeklyHours?: string
-  idePreference?: 'VSCODE' | 'INTELLIJ' | 'OTHER'
-  isFirstTimeContributor?: boolean
+  userId: string
+  primaryIde: PrimaryIde
+  experienceLevel: ExperienceLevel
+  firstTimeContributor: boolean
+  interestAreas?: string
+  contributionTypes?: string
+  weeklyHours?: number
+  gitPrConfidence?: number
+  userAdjustedSkills?: string
+}
+export interface OnboardingUpdateResponse {
+  userId: string
+  primaryIde: PrimaryIde
+  experienceLevel: ExperienceLevel
+  firstTimeContributor: boolean
+  interestAreas: string | null
+  contributionTypes: string | null
+  weeklyHours: number | null
 }
 export function putUserOnboarding(payload: OnboardingUpdateRequest) {
-  return apiClient<void>('/users/me/onboarding', { method: 'PUT', body: payload })
+  return apiClient<OnboardingUpdateResponse>('/users/me/onboarding', { method: 'PUT', body: payload })
 }
 
-// 3. GET /tutorial/progress — 초보자 튜토리얼 완료/스킵 상태 조회
+// 3. GET /tutorial/progress?userId=... — 초보자 튜토리얼 완료/스킵 상태 조회 (BR03)
 export interface TutorialProgress {
-  stepId: string
+  userId: string
   completed: boolean
   skipped: boolean
+  currentStep: string | null
+  completedAt: string | null
 }
-export function getTutorialProgress() {
-  return apiClient<TutorialProgress[]>('/tutorial/progress')
+export function getTutorialProgress(userId: string) {
+  return apiClient<TutorialProgress>('/tutorial/progress', { query: { userId } })
 }
 
 // 4. POST /tutorial/progress — 튜토리얼 완료/스킵 상태 저장
-export function postTutorialProgress(payload: TutorialProgress) {
+export interface SaveTutorialProgressRequest {
+  userId: string
+  completed: boolean
+  skipped: boolean
+  currentStep?: string
+}
+export function postTutorialProgress(payload: SaveTutorialProgressRequest) {
   return apiClient<TutorialProgress>('/tutorial/progress', { method: 'POST', body: payload })
+}
+
+// GET /users/me/github-account — F004 GitHub 분석(SCR003)이 보여줄 실제 공개 프로필(BR02)
+export interface GithubAccountSummary {
+  login: string
+  profileUrl: string
+  publicReposCount: number | null
+  followers: number | null
+  connectedAt: string
+}
+export function getGithubAccount() {
+  return apiClient<GithubAccountSummary>('/users/me/github-account')
 }
 
 // 5. GET /recommendations/repositories — 개인화 Repository 추천 (적합도·Evidence)

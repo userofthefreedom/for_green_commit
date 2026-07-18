@@ -23,7 +23,7 @@ export function LandingPage() {
             GitHub로 시작하기 →
           </Link>
           <Link
-            to="/onboarding/tutorial"
+            to="/login"
             className="btn lg"
             style={{ background: 'transparent', color: '#fff', border: '1px solid #ffffff88' }}
           >

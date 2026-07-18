@@ -1,22 +1,81 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../app/AuthContext'
+import { putUserOnboarding } from '../../lib/api/endpoints'
+import type { ExperienceLevel, PrimaryIde } from '../../lib/api/endpoints'
 
-const IDE_OPTIONS = [
+const IDE_OPTIONS: { id: PrimaryIde; label: string }[] = [
   { id: 'VSCODE', label: 'VS Code' },
-  { id: 'INTELLIJ', label: 'IntelliJ / JetBrains' },
+  { id: 'INTELLIJ_IDEA', label: 'IntelliJ / JetBrains' },
   { id: 'OTHER', label: '기타' },
+]
+const EXPERIENCE_OPTIONS: { id: ExperienceLevel; label: string }[] = [
+  { id: 'FIRST_TIME', label: '0회' },
+  { id: 'ONE_TO_TWO', label: '1~2회' },
+  { id: 'THREE_PLUS', label: '3회+' },
+]
+const CONFIDENCE_OPTIONS = [
+  { id: 1, label: '없음' },
+  { id: 2, label: '보통' },
+  { id: 3, label: '능숙' },
+]
+const INTEREST_OPTIONS = ['공익', '문서', '웹', '데이터', '테스트', '버그']
+const WEEKLY_HOURS_OPTIONS = [
+  { id: 1, label: '주 1시간 미만' },
+  { id: 3, label: '주 2~3시간' },
+  { id: 5, label: '주 4~6시간' },
+  { id: 8, label: '주 7시간+' },
 ]
 
 /**
- * SCR004 추가 프로필 — "IDE·경험·관심·시간·첫 기여 여부" (기획서 표19).
- * v3 prototype의 #diagnose 화면(경험·관심 분야·투자 시간)을 이관하되, 이전 감사에서
- * 지적된 갭인 "주 IDE 선택"과 "첫 기여 여부" 필드를 추가해 기획서 SCR004 정의를
- * 완전히 커버하도록 보강했다. Phase 1은 선택 상태만 로컬로 들고 있고 저장(PUT
- * /users/me/onboarding)은 연결하지 않는다.
+ * SCR004 추가 프로필 — "IDE·경험·관심·시간·첫 기여 여부" (기획서 표13/표19).
+ * Phase 3: 실제로 PUT /users/me/onboarding에 저장하고, BR03에 따라 제출 직후 분기한다 —
+ * 첫 기여자면 튜토리얼(SCR005)로 기본 진입시키고, 아니면 바로 추천으로 건너뛴다.
  */
 export function ProfilePage() {
-  const [ide, setIde] = useState<string>('VSCODE')
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [ide, setIde] = useState<PrimaryIde>('VSCODE')
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('FIRST_TIME')
+  const [gitPrConfidence, setGitPrConfidence] = useState<number>(1)
   const [isFirstTime, setIsFirstTime] = useState<boolean | null>(null)
+  const [interests, setInterests] = useState<string[]>([])
+  const [weeklyHours, setWeeklyHours] = useState<number>(3)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function toggleInterest(tag: string) {
+    setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }
+
+  async function handleSubmit() {
+    if (!user) return
+    if (isFirstTime === null) {
+      setError('오픈소스 기여가 처음인지 알려주세요.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await putUserOnboarding({
+        userId: user.id,
+        primaryIde: ide,
+        experienceLevel,
+        firstTimeContributor: isFirstTime,
+        interestAreas: interests.join(','),
+        contributionTypes: interests.join(','),
+        weeklyHours,
+        gitPrConfidence,
+      })
+      // BR03: 첫 기여자는 튜토리얼로, 아니면 바로 추천으로.
+      navigate(isFirstTime ? '/onboarding/tutorial' : '/recommend/repositories')
+    } catch {
+      setError('저장에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <section>
@@ -27,27 +86,37 @@ export function ProfilePage() {
           <div className="eyebrow">경험</div>
           <div style={{ margin: '10px 0' }}>
             <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>
-              프레임워크(React 등)
+              Git 협업 자신감
             </div>
-            <span className="tag">없음</span>
-            <span className="pill">보통</span>
-            <span className="tag">능숙</span>
-          </div>
-          <div style={{ margin: '10px 0' }}>
-            <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>
-              Git 협업
+            <div className="row">
+              {CONFIDENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={gitPrConfidence === opt.id ? 'pill' : 'tag'}
+                  onClick={() => setGitPrConfidence(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <span className="tag">없음</span>
-            <span className="pill">보통</span>
-            <span className="tag">능숙</span>
           </div>
           <div style={{ margin: '10px 0' }}>
             <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>
               외부 PR 경험
             </div>
-            <span className="pill">0회</span>
-            <span className="tag">1~2회</span>
-            <span className="tag">3회+</span>
+            <div className="row">
+              {EXPERIENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={experienceLevel === opt.id ? 'pill' : 'tag'}
+                  onClick={() => setExperienceLevel(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="eyebrow" style={{ marginTop: 16 }}>
@@ -77,16 +146,32 @@ export function ProfilePage() {
         <div className="card">
           <div className="eyebrow">관심 분야 · 투자 시간</div>
           <div style={{ margin: '8px 0' }}>
-            <span className="pill">공익</span>
-            <span className="tag">문서</span>
-            <span className="pill">웹</span>
-            <span className="tag">데이터</span>
+            {INTEREST_OPTIONS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={interests.includes(tag) ? 'pill' : 'tag'}
+                onClick={() => toggleInterest(tag)}
+                style={{ marginRight: 6, marginBottom: 6 }}
+              >
+                {tag}
+              </button>
+            ))}
           </div>
           <div className="muted" style={{ fontSize: 12, margin: '14px 0 5px' }}>
             주당 투자 가능 시간
           </div>
-          <div className="btn full" style={{ justifyContent: 'space-between' }}>
-            주 2~3시간 <span>▾</span>
+          <div className="row">
+            {WEEKLY_HOURS_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={weeklyHours === opt.id ? 'pill' : 'tag'}
+                onClick={() => setWeeklyHours(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           <div className="muted" style={{ fontSize: 12, margin: '14px 0 5px' }}>
@@ -106,9 +191,14 @@ export function ProfilePage() {
           </div>
           <p className="note">Clone·IDE Handoff(SCR010)와 IDE 실행 단계에서 이 값으로 Deep Link를 만들어요.</p>
 
-          <Link to="/recommend/repositories" className="btn p full lg" style={{ marginTop: 18 }}>
-            추천 받기 →
-          </Link>
+          {error && (
+            <p className="muted" style={{ color: 'var(--amber, #b7791f)' }}>
+              {error}
+            </p>
+          )}
+          <button className="btn p full lg" style={{ marginTop: 18 }} onClick={handleSubmit} disabled={saving}>
+            {saving ? '저장 중…' : '추천 받기 →'}
+          </button>
         </div>
       </div>
     </section>

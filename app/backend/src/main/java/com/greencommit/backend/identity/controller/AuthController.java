@@ -1,5 +1,6 @@
 package com.greencommit.backend.identity.controller;
 
+import com.greencommit.backend.identity.dto.GitHubAccountResponse;
 import com.greencommit.backend.identity.dto.GitHubCallbackRequest;
 import com.greencommit.backend.identity.dto.UserResponse;
 import com.greencommit.backend.identity.service.AuthService;
@@ -42,5 +43,17 @@ public class AuthController {
         return authService.findByGithubId(githubId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    /** F004/BR02: SCR003 GitHub 분석 화면이 보여줄 실제 공개 프로필 Snapshot(로그인 시 저장됨). */
+    @GetMapping("/users/me/github-account")
+    public ResponseEntity<GitHubAccountResponse> githubAccount(@AuthenticationPrincipal OAuth2User principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        Long githubId = ((Number) principal.getAttributes().get("id")).longValue();
+        return authService.getGithubAccountSummary(githubId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(404).build());
     }
 }
