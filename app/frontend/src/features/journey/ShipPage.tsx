@@ -1,15 +1,37 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useJourney } from '../../app/JourneyContext'
 
 /**
- * SCR013 Commit·PR — "IDE 실행·Commit·Push·PR 템플릿·체크포인트" (기획서 표19).
- * v3 prototype #ship 화면을 이관했다. v3에서는 이 화면에서 바로 성공/실패 데모로
- * 건너뛰었지만, 실제 흐름은 "PR URL/번호 등록 → Monitoring 상태로 전환"이므로
- * (SPEC.md 6절) 여기서는 SCR014 PR Monitoring으로 이동한다.
+ * SCR013 Commit·PR — "IDE 실행·Commit·Push·PR 템플릿·체크포인트" (기획서 표19, F014/F015/F016).
+ * Phase 6: "PR 등록 완료" 입력란이 실제 PR URL을 받아 POST /pull-requests로 등록하고,
+ * 곧바로 F017 MVP 슬라이스(등록 직후 1회 상태 조회)까지 수행한 뒤 Monitoring으로 이동한다.
+ * 실제 GitHub의 공개 PR을 넣으면(예: 이 저장소 자신의 PR) 진짜 상태가 조회된다.
  */
 export function ShipPage() {
   const navigate = useNavigate()
+  const { journey, updateStep, registerPullRequest } = useJourney()
   const [ideOpened, setIdeOpened] = useState(false)
+  const [prUrl, setPrUrl] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleRegister() {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await registerPullRequest(prUrl)
+      if (journey) {
+        await updateStep('COMMIT_PUSH', { action: 'COMPLETE' })
+        await updateStep('PR', { action: 'COMPLETE' })
+      }
+      navigate('/journey/monitoring')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'PR 등록에 실패했어요. 주소를 확인해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <>
@@ -48,18 +70,30 @@ export function ShipPage() {
       </div>
 
       <div className="card" style={{ marginTop: 18 }}>
-        <div className="eyebrow">✅ 다 했나요? (체크포인트)</div>
-        <div className="check">
-          <span className="cb on">✓</span>학습한 대로 코드를 수정했다
-        </div>
-        <div className="check">
-          <span className="cb on">✓</span>커밋하고 push 했다
-        </div>
-        <div className="check">
-          <span className="cb on">✓</span>GitHub에서 PR을 열었다
-        </div>
-        <button type="button" className="btn p" style={{ marginTop: 12 }} onClick={() => navigate('/journey/monitoring')}>
-          PR 등록 완료 · 상태 확인하러 가기 →
+        <div className="eyebrow">✅ PR을 열었다면, 주소를 알려주세요</div>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
+          형식: https://github.com/{'{owner}'}/{'{repo}'}/pull/{'{번호}'} — 등록하면 바로 실제 상태를
+          1회 조회해요 (F017 MVP 범위).
+        </p>
+        <input
+          className="line"
+          placeholder="https://github.com/octocat/Hello-World/pull/1"
+          value={prUrl}
+          onChange={(e) => setPrUrl(e.target.value)}
+        />
+        {error && (
+          <p className="muted" style={{ color: 'var(--amber, #b7791f)', marginTop: 8 }}>
+            {error}
+          </p>
+        )}
+        <button
+          type="button"
+          className="btn p"
+          style={{ marginTop: 12 }}
+          onClick={handleRegister}
+          disabled={submitting || !prUrl.trim()}
+        >
+          {submitting ? '등록 중…' : 'PR 등록 완료 · 상태 확인하러 가기 →'}
         </button>
       </div>
     </>

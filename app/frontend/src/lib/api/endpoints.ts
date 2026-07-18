@@ -236,23 +236,38 @@ export function postAiOrchestration(payload: AiOrchestrationRequest) {
   return apiClient<AiOrchestrationResponse>('/ai/orchestrations', { method: 'POST', body: payload })
 }
 
-// 13. POST /pull-requests — PR 연결·등록 (등록 직후 1회 상태 조회까지가 MVP 범위)
+// 13. POST /pull-requests — PR 연결·등록 (F016)
 export interface CreatePullRequestRequest {
-  journeyId: string
-  pullRequestUrl: string
+  userId: string
+  sessionId?: string | null
+  repoOwner: string
+  repoName: string
+  prNumber: number
+  prUrl: string
 }
 export interface PullRequestLink {
-  pullRequestId: string
-  pullRequestUrl: string
-  status: 'OPEN' | 'MERGED' | 'CLOSED_UNMERGED' | 'UNKNOWN'
+  id: string
+  repoOwner: string
+  repoName: string
+  prNumber: number
+  prUrl: string
+  createdAt: string
 }
 export function postPullRequest(payload: CreatePullRequestRequest) {
   return apiClient<PullRequestLink>('/pull-requests', { method: 'POST', body: payload })
 }
 
-// 14. GET /pull-requests/{id}/status — PR 상태 조회 (F017 확장에서 주기 폴링으로 발전)
+// 14. GET /pull-requests/{id}/status — PR 상태 1회 조회 (F017 MVP 슬라이스, 실제 GitHub 공개 API 호출)
+export interface PullRequestStatus {
+  prLinkId: string
+  state: 'OPEN' | 'MERGED' | 'CLOSED_UNMERGED' | 'UNKNOWN'
+  merged: boolean | null
+  title: string | null
+  checkedAt: string
+  source: string
+}
 export function getPullRequestStatus(pullRequestId: string) {
-  return apiClient<PullRequestLink>(`/pull-requests/${pullRequestId}/status`)
+  return apiClient<PullRequestStatus>(`/pull-requests/${pullRequestId}/status`)
 }
 
 // 15. GET /notifications — 알림 보관함 (F018 필수 확장, MVP는 단순 조회만)
@@ -266,12 +281,16 @@ export function getNotifications() {
   return apiClient<NotificationItem[]>('/notifications')
 }
 
-// 16. GET /history — Contribution History 초안 (PR 연결 + Journey 요약 저장분)
+// 16. GET /history?userId=... — Contribution History 초안 (PR 연결 + Journey 요약 저장분, F019)
 export interface HistoryItem {
-  historyId: string
-  journeyId: string
-  summary: string
+  id: string
+  repoOwner: string | null
+  repoName: string | null
+  prNumber: number | null
+  prUrl: string | null
+  journeySummary: string | null
+  createdAt: string
 }
-export function getHistory() {
-  return apiClient<HistoryItem[]>('/history')
+export function getHistory(userId: string) {
+  return apiClient<HistoryItem[]>('/history', { query: { userId } })
 }

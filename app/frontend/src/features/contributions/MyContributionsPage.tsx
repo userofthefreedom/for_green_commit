@@ -1,16 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../app/AuthContext'
+import { getHistory } from '../../lib/api/endpoints'
+import type { HistoryItem } from '../../lib/api/endpoints'
 
 const COMMENT_TABS = ['전체', '변경요청', '질문', '칭찬']
 
 /**
  * SCR017 나의 기여 — "History·칭찬·성장 흔적·다음 Mission" (기획서 표19).
  * v3 prototype #my 화면(머지 배지, 코멘트 모아보기, 사고 역량 지도)을 이관했다.
- * 실제 데이터는 GET /history(표37) + ContributionHistory/GrowthEvidence 엔티티로
- * 채워지지만, F023(최소 게임화)은 표21 "선택" 우선순위라 지금은 placeholder다.
+ * Phase 6: "기여 History" 섹션만 실제 GET /history(F019 초안)로 채운다. 머지 배지·코멘트·
+ * 사고 역량 지도는 F023(최소 게임화, 표21 "선택" 우선순위)이라 여전히 placeholder다.
  */
 export function MyContributionsPage() {
+  const { user } = useAuth()
   const [filter, setFilter] = useState('전체')
+  const [history, setHistory] = useState<HistoryItem[] | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    getHistory(user.id)
+      .then(setHistory)
+      .catch(() => setHistory([]))
+  }, [user])
 
   return (
     <section>
@@ -18,6 +30,31 @@ export function MyContributionsPage() {
       <p className="lede">받은 코멘트, 머지 배지, 스스로 생각한 흔적을 한곳에서 봐요.</p>
 
       <div className="card">
+        <div className="eyebrow">
+          기여 History <span className="muted" style={{ textTransform: 'none', fontWeight: 400 }}>· PR 등록 시점에 저장된 실제 기록 (F019 초안)</span>
+        </div>
+        {!history && <p className="muted">불러오는 중…</p>}
+        {history?.length === 0 && <p className="muted">아직 등록한 PR이 없어요. Journey를 완주하면 여기 쌓여요.</p>}
+        {history?.map((item) => (
+          <div key={item.id} className="cmt" style={{ marginBottom: 8 }}>
+            <div className="who">
+              <span className="mav">{(item.repoOwner ?? '?').charAt(0).toUpperCase()}</span>
+              {item.repoOwner}/{item.repoName} {item.prNumber ? `#${item.prNumber}` : ''}
+              <span className="muted" style={{ marginLeft: 'auto' }}>
+                {new Date(item.createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+            <div>{item.journeySummary}</div>
+            {item.prUrl && (
+              <a href={item.prUrl} target="_blank" rel="noreferrer" className="note">
+                PR 원문 보기 ↗
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
         <div className="eyebrow">
           머지 배지 <span className="muted" style={{ textTransform: 'none', fontWeight: 400 }}>· 참여한 레포에서 머지된 횟수로 자라요</span>
         </div>
