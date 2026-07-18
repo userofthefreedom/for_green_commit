@@ -1,56 +1,28 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-interface RepoCard {
-  id: string
-  name: string
-  tagline: string
-  fitScore: number
-  languages: string[]
-  goodFirstIssues: number
-  evidence: string
-  best?: boolean
-}
-
-// Phase 1 placeholder — 실제로는 GET /recommendations/repositories(개인화 추천, 표37)로 채워진다.
-// "카드 세부속성" 갭 해소: 적합도·언어·good-first-issue 개수·추천 근거(Evidence)를 카드에 노출한다.
-const MOCK_REPOS: RepoCard[] = [
-  {
-    id: 'teammates',
-    name: 'TEAMMATES',
-    tagline: '교육기관용 피드백/평가 관리 오픈소스 (Angular + Java)',
-    fitScore: 94,
-    languages: ['TypeScript', 'Java'],
-    goodFirstIssues: 6,
-    evidence: '최근 30일 활동 · "good first issue" 라벨 다수 · 사용 언어(JS/TS)와 70% 일치',
-    best: true,
-  },
-  {
-    id: 'docs-i18n',
-    name: 'open-docs-i18n',
-    tagline: '문서 다국어 번역/오타 교정 프로젝트',
-    fitScore: 81,
-    languages: ['Markdown'],
-    goodFirstIssues: 12,
-    evidence: '관심 분야 "문서"와 일치 · 리뷰 응답 평균 5시간',
-  },
-  {
-    id: 'py-datatoolkit',
-    name: 'py-datatoolkit',
-    tagline: '데이터 전처리 유틸리티 라이브러리 (Python)',
-    fitScore: 68,
-    languages: ['Python'],
-    goodFirstIssues: 3,
-    evidence: '사용 언어(Python 20%)와 부분 일치 · 관심 분야 "데이터"와 일치',
-  },
-]
+import { getRepositoryRecommendations } from '../../lib/api/endpoints'
+import type { RepositoryRecommendation } from '../../lib/api/endpoints'
 
 /**
  * SCR006 Repository 추천 — "프로젝트 설명과 적합도·Evidence" (기획서 표19).
- * v3 prototype #recommend 화면의 1단계(레포 선택)를 분리 이관했다. 레포를 고르면
- * SCR007 Issue 선택으로 넘어간다 (BR04: Repository 선택 후에만 해당 Issue 후보 노출).
+ * Phase 4: GET /recommendations/repositories(F006, 시드 데이터)로 실제 추천 목록을 불러오고,
+ * 표16이 요구하는 카드 속성(공익목적·최근활동·문서품질·응답성·주의점)을 전부 노출한다.
+ * 레포를 고르면 SCR007 Issue 선택으로 넘어간다 (BR04: Repository 선택 후에만 Issue 후보 노출).
  */
 export function RepositoryRecommendationPage() {
   const navigate = useNavigate()
+  const [repos, setRepos] = useState<RepositoryRecommendation[] | null>(null)
+  const [error, setError] = useState(false)
+
+  function load() {
+    setRepos(null)
+    setError(false)
+    getRepositoryRecommendations()
+      .then((data) => setRepos([...data].sort((a, b) => a.rank - b.rank)))
+      .catch(() => setError(true))
+  }
+
+  useEffect(load, [])
 
   return (
     <section>
@@ -62,7 +34,7 @@ export function RepositoryRecommendationPage() {
             다시 고르세요.
           </p>
         </div>
-        <button className="btn" type="button">
+        <button className="btn" type="button" onClick={load}>
           🔄 새로고침
         </button>
       </div>
@@ -70,32 +42,71 @@ export function RepositoryRecommendationPage() {
       <div className="eyebrow" style={{ marginTop: 16 }}>
         1. 레포 선택
       </div>
+
+      {error && <p className="muted">불러오지 못했어요. 새로고침해보세요.</p>}
+      {!error && !repos && <p className="muted">불러오는 중…</p>}
+
       <div className="grid g3" style={{ marginTop: 10 }}>
-        {MOCK_REPOS.map((repo) => (
-          <div key={repo.id} className={repo.best ? 'rec best' : 'rec'}>
+        {repos?.map((repo, i) => (
+          <div key={repo.repositoryId} className={i === 0 ? 'rec best' : 'rec'}>
             <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <b>{repo.name}</b>
-              <span className="pill">적합도 {repo.fitScore}</span>
+              <b>{repo.fullName}</b>
+              <span className="pill">적합도 {repo.fitScore ?? repo.score}</span>
             </div>
             <p className="muted" style={{ fontSize: 13, margin: '8px 0' }}>
-              {repo.tagline}
+              {repo.description}
             </p>
             <div>
-              {repo.languages.map((lang) => (
-                <span key={lang} className="tag">
-                  {lang}
-                </span>
-              ))}
-              <span className="tag">good first issue {repo.goodFirstIssues}개</span>
+              {repo.primaryLanguage && <span className="tag">{repo.primaryLanguage}</span>}
+              {repo.stars != null && <span className="tag">⭐ {repo.stars.toLocaleString()}</span>}
             </div>
-            <div className="callout b" style={{ marginTop: 10, fontSize: 12 }}>
-              📎 {repo.evidence}
-            </div>
+            <table className="kv" style={{ marginTop: 8 }}>
+              <tbody>
+                {repo.publicBenefitSummary && (
+                  <tr>
+                    <td>공익 목적</td>
+                    <td>{repo.publicBenefitSummary}</td>
+                  </tr>
+                )}
+                {repo.recentActivitySummary && (
+                  <tr>
+                    <td>최근 활동</td>
+                    <td>{repo.recentActivitySummary}</td>
+                  </tr>
+                )}
+                {repo.contributionDocsQuality && (
+                  <tr>
+                    <td>기여 문서</td>
+                    <td>{repo.contributionDocsQuality}</td>
+                  </tr>
+                )}
+                {repo.externalPrResponsiveness && (
+                  <tr>
+                    <td>응답성</td>
+                    <td>{repo.externalPrResponsiveness}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {repo.cautionNote && (
+              <div className="callout a" style={{ marginTop: 8, fontSize: 12 }}>
+                ⚠ {repo.cautionNote}
+              </div>
+            )}
+            {repo.evidence.length > 0 && (
+              <div className="callout b" style={{ marginTop: 8, fontSize: 12 }}>
+                📎 {repo.evidence[0].description}
+              </div>
+            )}
             <button
               type="button"
               className="btn p full"
               style={{ marginTop: 12 }}
-              onClick={() => navigate(`/recommend/issues?repositoryId=${repo.id}&repositoryName=${encodeURIComponent(repo.name)}`)}
+              onClick={() =>
+                navigate(
+                  `/recommend/issues?repositoryId=${repo.repositoryId}&repositoryName=${encodeURIComponent(repo.fullName)}`,
+                )
+              }
             >
               이 레포 선택 →
             </button>

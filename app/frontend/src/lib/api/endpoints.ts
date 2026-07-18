@@ -83,48 +83,92 @@ export function getGithubAccount() {
   return apiClient<GithubAccountSummary>('/users/me/github-account')
 }
 
-// 5. GET /recommendations/repositories — 개인화 Repository 추천 (적합도·Evidence)
+// 5. GET /recommendations/repositories — 개인화 Repository 추천 (표16 카드 속성 전체 + Evidence)
+// 실제 백엔드 계약(RepositoryRecommendationResponse, com.greencommit.backend.recommendation)에 맞춘 타입.
+export interface EvidenceItem {
+  evidenceType: string
+  sourceUrl: string | null
+  description: string | null
+  ruleName: string | null
+}
 export interface RepositoryRecommendation {
   repositoryId: string
-  name: string
-  description: string
-  fitScore: number
-  languages: string[]
-  goodFirstIssueCount: number
+  fullName: string
+  description: string | null
+  primaryLanguage: string | null
+  topics: string | null
+  repoUrl: string
+  publicBenefitSummary: string | null
+  recentActivitySummary: string | null
+  contributionDocsQuality: string | null
+  externalPrResponsiveness: string | null
+  fitScore: number | null
+  cautionNote: string | null
+  stars: number | null
+  score: number
+  rank: number
+  evidence: EvidenceItem[]
 }
 export function getRepositoryRecommendations() {
   return apiClient<RepositoryRecommendation[]>('/recommendations/repositories')
 }
 
-// 6. GET /repositories/{id}/issues — 선택 Repository의 Issue 후보 (BR04)
+// 6. GET /repositories/{id}/issues — 선택 Repository의 Issue 후보 (BR04, 표16 카드 속성 전체)
 export interface IssueSummary {
   issueId: string
-  number: string
+  repositoryId: string
+  number: number
   title: string
-  fitScore: number
-  labels: string[]
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  url: string
+  summary: string | null
+  currentProblem: string | null
+  expectedOutcome: string | null
+  completionCriteria: string | null
+  contributionType: string | null
+  estimatedScope: string | null
+  difficulty: string | null
+  assignee: string | null
+  linkedPrUrl: string | null
+  lastUpdatedAt: string | null
+  state: string
 }
 export function getRepositoryIssues(repositoryId: string) {
   return apiClient<IssueSummary[]>(`/repositories/${repositoryId}/issues`)
 }
 
-// 7. POST /journeys — Repository·Issue 확정 후 Journey(Mission) 생성
+// 7. POST /journeys, GET /journeys/{id} — Repository·Issue 확정 후 Journey(9단계) 생성/조회
 export interface CreateJourneyRequest {
+  userId: string
   repositoryId: string
   issueId: string
 }
+export interface JourneyStep {
+  stepId: string
+  stepType: string
+  sequence: number
+  state: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED'
+  mode: string | null
+  updatedAt: string
+}
 export interface Journey {
-  journeyId: string
-  currentStep: string
+  sessionId: string
+  missionId: string
+  status: string
+  startedAt: string
+  completedAt: string | null
+  steps: JourneyStep[]
 }
 export function postJourney(payload: CreateJourneyRequest) {
   return apiClient<Journey>('/journeys', { method: 'POST', body: payload })
 }
+export function getJourney(sessionId: string) {
+  return apiClient<Journey>(`/journeys/${sessionId}`)
+}
 
 // 8. PATCH /journeys/{id}/steps/{step} — 단계 완료/스킵/재시도 상태 갱신
 export interface UpdateJourneyStepRequest {
-  status: 'DONE' | 'SKIPPED' | 'IN_PROGRESS' | 'FAILED'
+  action: 'COMPLETE' | 'SKIP' | 'RETRY'
+  mode?: string
 }
 export function patchJourneyStep(journeyId: string, step: string, payload: UpdateJourneyStepRequest) {
   return apiClient<Journey>(`/journeys/${journeyId}/steps/${step}`, { method: 'PATCH', body: payload })

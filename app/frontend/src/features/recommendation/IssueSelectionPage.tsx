@@ -1,56 +1,52 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-
-interface IssueCard {
-  id: string
-  number: string
-  title: string
-  fitScore: number
-  labels: string[]
-  difficulty: string
-  scope: string
-  doneCriteria: string
-  best?: boolean
-}
-
-// Phase 1 placeholder — 실제로는 GET /repositories/{id}/issues(표37)로 채워진다.
-// "카드 세부속성" 갭 해소: 난이도·범위·완료 기준을 카드에 노출한다 (SCR007 핵심 목적).
-const MOCK_ISSUES: IssueCard[] = [
-  {
-    id: 'typo',
-    number: '#12603',
-    title: 'Typo in instructor help page',
-    fitScore: 94,
-    labels: ['good first issue', 'docs'],
-    difficulty: '쉬움',
-    scope: '파일 1개 · 국소 변경',
-    doneCriteria: '오타 수정 · 프론트 빌드 통과',
-    best: true,
-  },
-  {
-    id: 'tooltip',
-    number: '#12811',
-    title: 'Add tooltip to feedback session card',
-    fitScore: 76,
-    labels: ['good first issue', 'frontend'],
-    difficulty: '보통',
-    scope: '파일 2~3개 · 여러 대안 존재',
-    doneCriteria: '툴팁 노출 · 접근성 속성 포함 · 스냅샷 테스트 통과',
-  },
-]
+import { useJourney } from '../../app/JourneyContext'
+import { getRepositoryIssues } from '../../lib/api/endpoints'
+import type { IssueSummary } from '../../lib/api/endpoints'
 
 /**
  * SCR007 Issue 선택 — "Issue 설명·완료 기준·난이도·범위" (기획서 표19).
- * v3 prototype #recommend 화면의 2단계(이슈 선택 + 하단 select-bar)를 분리 이관했다.
- * 선택을 확정하면 SCR008 Journey 개요로 이동한다.
+ * Phase 4: GET /repositories/{id}/issues(F007, BR04)로 실제 Issue 후보를 불러오고, 선택을
+ * 확정하면 POST /journeys(F008)로 실제 Journey(9단계)를 생성한 뒤 SCR008로 이동한다.
  */
 export function IssueSelectionPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { startJourney } = useJourney()
+  const repositoryId = searchParams.get('repositoryId') ?? ''
   const repositoryName = searchParams.get('repositoryName') ?? '레포 미선택'
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
 
-  const selectedIssue = MOCK_ISSUES.find((issue) => issue.id === selectedIssueId)
+  const [issues, setIssues] = useState<IssueSummary[] | null>(null)
+  const [error, setError] = useState(false)
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
+  const [starting, setStarting] = useState(false)
+
+  useEffect(() => {
+    if (!repositoryId) return
+    getRepositoryIssues(repositoryId)
+      .then(setIssues)
+      .catch(() => setError(true))
+  }, [repositoryId])
+
+  const selectedIssue = issues?.find((issue) => issue.issueId === selectedIssueId)
+
+  async function handleStart() {
+    if (!selectedIssue) return
+    setStarting(true)
+    try {
+      await startJourney({
+        repositoryId,
+        repositoryName,
+        issueId: selectedIssue.issueId,
+        issueTitle: selectedIssue.title,
+      })
+      navigate('/journey/overview')
+    } catch {
+      setError(true)
+    } finally {
+      setStarting(false)
+    }
+  }
 
   return (
     <section>
@@ -59,31 +55,37 @@ export function IssueSelectionPage() {
         2. <b>{repositoryName}</b>의 Issue 후보예요. 완료 기준·난이도를 보고 하나를 골라보세요.
       </p>
 
+      {!repositoryId && <p className="muted">먼저 레포를 선택해주세요.</p>}
+      {error && <p className="muted">불러오지 못했어요. 새로고침해보세요.</p>}
+      {repositoryId && !error && !issues && <p className="muted">불러오는 중…</p>}
+
       <div>
-        {MOCK_ISSUES.map((issue) => (
-          <div key={issue.id} className={issue.id === selectedIssueId ? 'issue best' : 'issue'}>
+        {issues?.map((issue) => (
+          <div key={issue.issueId} className={issue.issueId === selectedIssueId ? 'issue best' : 'issue'}>
             <div style={{ flex: 1 }}>
               <div className="row" style={{ alignItems: 'center' }}>
                 <b>{issue.title}</b>
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {issue.number}
+                  #{issue.number}
                 </span>
-                <span className="pill">적합도 {issue.fitScore}</span>
               </div>
               <div style={{ margin: '6px 0' }}>
-                {issue.labels.map((label) => (
-                  <span key={label} className="tag">
-                    {label}
-                  </span>
-                ))}
-                <span className="pill g">난이도 {issue.difficulty}</span>
-                <span className="pill b">{issue.scope}</span>
+                {issue.contributionType && <span className="tag">{issue.contributionType}</span>}
+                {issue.difficulty && <span className="pill g">난이도 {issue.difficulty}</span>}
+                {issue.estimatedScope && <span className="pill b">{issue.estimatedScope}</span>}
               </div>
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                완료 기준: {issue.doneCriteria}
-              </p>
+              {issue.currentProblem && (
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  지금 문제: {issue.currentProblem}
+                </p>
+              )}
+              {issue.completionCriteria && (
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  완료 기준: {issue.completionCriteria}
+                </p>
+              )}
             </div>
-            <button type="button" className="btn p" onClick={() => setSelectedIssueId(issue.id)}>
+            <button type="button" className="btn p" onClick={() => setSelectedIssueId(issue.issueId)}>
               이 이슈 선택
             </button>
           </div>
@@ -97,13 +99,8 @@ export function IssueSelectionPage() {
         <div style={{ flex: 1, fontSize: 13 }}>
           선택 — 레포: <b>{repositoryName}</b> · 이슈: <b>{selectedIssue?.title ?? '—'}</b>
         </div>
-        <button
-          type="button"
-          className="btn p lg"
-          disabled={!selectedIssue}
-          onClick={() => navigate('/journey/overview')}
-        >
-          다음 단계로 (기여 시작) →
+        <button type="button" className="btn p lg" disabled={!selectedIssue || starting} onClick={handleStart}>
+          {starting ? '시작하는 중…' : '다음 단계로 (기여 시작) →'}
         </button>
       </div>
     </section>

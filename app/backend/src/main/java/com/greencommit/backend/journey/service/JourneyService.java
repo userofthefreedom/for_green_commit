@@ -95,6 +95,14 @@ public class JourneyService {
         return toResponse(session);
     }
 
+    /** Journey 개요(SCR008) 화면이 새로고침 후에도 현재 단계 상태를 다시 불러올 수 있도록. */
+    @Transactional(readOnly = true)
+    public JourneySessionResponse getJourney(UUID sessionId) {
+        JourneySession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new NotFoundException("Journey session not found: " + sessionId));
+        return toResponse(session);
+    }
+
     @Transactional
     public JourneySessionResponse updateStep(UUID sessionId, String stepTypeRaw, JourneyStepUpdateRequest request) {
         JourneySession session = sessionRepository.findById(sessionId)

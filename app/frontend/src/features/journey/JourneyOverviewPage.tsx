@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useJourney } from '../../app/JourneyContext'
 
 interface SkipMatrixRow {
   step: string
@@ -7,8 +8,7 @@ interface SkipMatrixRow {
   constraint: string
 }
 
-// 기획서 부록 B "Journey 자동화·스킵 Matrix"를 그대로 옮긴 9단계 표 —
-// PRD.md가 지목한 "9단계 스킵매트릭스" 갭을 이 화면에서 해소한다.
+// 기획서 부록 B "Journey 자동화·스킵 Matrix" 원문.
 const SKIP_MATRIX: SkipMatrixRow[] = [
   { step: '튜토리얼', skip: '스킵', automation: '해당 없음', constraint: '첫 기여 사용자는 기본 노출' },
   { step: 'Fork', skip: '스킵', automation: 'GitHub API 자동화', constraint: '별도 쓰기 동의와 최종 확인' },
@@ -21,39 +21,87 @@ const SKIP_MATRIX: SkipMatrixRow[] = [
   { step: 'Monitoring', skip: '해제', automation: 'Polling/Webhook', constraint: '사용자 연결 PR만 추적' },
 ]
 
+const STEP_LABEL: Record<string, string> = {
+  TUTORIAL: '튜토리얼',
+  FORK: 'Fork',
+  CLONE: 'Clone',
+  REPO_ISSUE_BRIEF: 'Repo·Issue Brief',
+  QUESTION_COACH: '질문 Coach',
+  IDE_LAUNCH: 'IDE 실행',
+  COMMIT_PUSH: 'Commit·Push',
+  PR: 'PR',
+  MONITORING: 'Monitoring',
+}
+
+const STATE_LABEL: Record<string, { label: string; className: string }> = {
+  PENDING: { label: '대기', className: 'pill g' },
+  IN_PROGRESS: { label: '진행 중', className: 'pill b' },
+  COMPLETED: { label: '완료', className: 'pill' },
+  SKIPPED: { label: '건너뜀', className: 'pill g' },
+}
+
 /**
- * SCR008 Journey 개요 (신규 화면) — "단계·진행도·스킵·자동화 설정" (기획서 표19).
- *
- * 이전 프로토타입(v3)에는 없던 화면이다. Issue를 확정한 직후, 첫 Fork 버튼을 누르기
- * 전에 전체 기여 여정(Fork→Clone→Brief→Coach→Commit·PR→Monitoring→결과)을 한눈에
- * 보여주고, 어떤 단계가 스킵 가능한지 / 어디까지 자동화되는지를 미리 안내하는 역할이다
- * (JourneySession/JourneyStep 엔티티가 이 상태를 갖는다). Phase 1은 라우팅과 정적
- * 설명만 제공하고, 실제 진행률·스킵 저장은 이후 Phase에서 JourneyRail/Settings와
- * 함께 연결한다.
+ * SCR008 Journey 개요 (신규 화면, 기획서 표19) — "단계·진행도·스킵·자동화 설정".
+ * Phase 4: Issue 선택 시 만들어진 실제 JourneySession(9단계, 부록B)을 JourneyContext에서
+ * 읽어 진행 상태를 그대로 보여준다. F017(Monitoring 주기 추적)은 Phase 99 보류지만, 9번째
+ * 단계 자체는 실제 JourneyStep 행으로 존재한다.
  */
 export function JourneyOverviewPage() {
+  const { journey, meta, loading } = useJourney()
+
+  if (loading) {
+    return (
+      <section>
+        <p className="lede">불러오는 중…</p>
+      </section>
+    )
+  }
+
+  if (!journey) {
+    return (
+      <section>
+        <h1>기여 여정 개요</h1>
+        <p className="lede">아직 시작한 Journey가 없어요. 먼저 레포와 Issue를 선택해주세요.</p>
+        <Link to="/recommend/repositories" className="btn p lg">
+          미션 찾기로 이동 →
+        </Link>
+      </section>
+    )
+  }
+
   return (
     <section>
       <h1>기여 여정 개요</h1>
       <p className="lede">
-        이제부터 GitHub에서 실제로 일어나는 8단계예요. 익숙한 단계는 건너뛰거나 자동화할 수 있고,
-        Green Commit이 매 단계 옆에서 코치해요.
+        {meta ? (
+          <>
+            <b>{meta.repositoryName}</b>의 <b>{meta.issueTitle}</b> — 이제부터 GitHub에서 실제로 일어나는
+            9단계예요.
+          </>
+        ) : (
+          '이제부터 GitHub에서 실제로 일어나는 9단계예요.'
+        )}{' '}
+        익숙한 단계는 건너뛰거나 자동화할 수 있고, Green Commit이 매 단계 옆에서 코치해요.
       </p>
 
       <div className="card">
-        <div className="eyebrow">이번 Journey에서 지나갈 단계</div>
-        <div className="flowline" style={{ margin: '6px 0 4px' }}>
-          {['Fork', 'Clone', 'Brief', 'Coach', 'Commit·PR', 'Monitoring', '결과'].map((step, i, arr) => (
-            <span key={step} style={{ display: 'contents' }}>
-              <span className="fchip">
-                {i + 1} {step}
-              </span>
-              {i < arr.length - 1 && <span>→</span>}
-            </span>
-          ))}
-        </div>
-        <div className="callout g" style={{ marginTop: 10 }}>
-          왼쪽 사이드 레일(Journey Rail)이 지금 어디에 있는지 계속 보여줄 거예요.
+        <div className="eyebrow">이번 Journey 진행 상태</div>
+        <div className="check" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          {journey.steps.map((step) => {
+            const stateInfo = STATE_LABEL[step.state] ?? { label: step.state, className: 'pill g' }
+            return (
+              <div
+                key={step.stepId}
+                className="row"
+                style={{ justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--line)' }}
+              >
+                <span>
+                  {step.sequence}. {STEP_LABEL[step.stepType] ?? step.stepType}
+                </span>
+                <span className={stateInfo.className}>{stateInfo.label}</span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
