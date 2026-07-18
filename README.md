@@ -12,6 +12,8 @@ GitHub Journey(Fork → Clone → Repo/Issue 분석 → 학습 → Commit/PR →
 ## 문서
 - [`docs/그린커밋_WEB_서비스_기획서_v0.6.2.docx`](docs/그린커밋_WEB_서비스_기획서_v0.6.2.docx) — 기획서 원본
 - [`docs/green-commit-prototype-v3.html`](docs/green-commit-prototype-v3.html) — 이전 프로토타입(mock)
+- [`docs/setup-guide.txt`](docs/setup-guide.txt) — 로컬 개발 환경(Java 21·Python 3.12 등) 설치 가이드
+- [`docs/github-oauth-app-guide.txt`](docs/github-oauth-app-guide.txt) — GitHub OAuth App 발급 가이드 (BR01 로그인 게이트에 필요)
 - [`CLAUDE.md`](CLAUDE.md) — 프로젝트 공통 규칙 / 코드 컨벤션
 
 ## 저장소 구조
@@ -49,4 +51,6 @@ PostgreSQL+pgvector / Redis / Neo4j / MinIO / Docker
    실제 값을 채웁니다. (`.env`는 커밋되지 않습니다.)
 
 ## 현재 진행 상태
-Phase 0 — 모노레포 구조 부트스트랩 진행 중.
+Phase 0(모노레포 부트스트랩), Phase 1(MVP 엔티티/API/화면 라우팅 스캐폴드) 완료.
+다음은 Phase 2(실제 GitHub OAuth 로그인 게이트) — 진행 전 `docs/github-oauth-app-guide.txt`대로
+GitHub OAuth App을 발급해야 합니다.
