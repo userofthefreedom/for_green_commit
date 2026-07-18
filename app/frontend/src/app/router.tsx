@@ -2,6 +2,7 @@ import { createBrowserRouter, Outlet } from 'react-router-dom'
 import { AppShell } from './layout/AppShell'
 import { AuthGuard } from './AuthGuard'
 import { LandingPage } from '../features/landing/LandingPage'
+import { LoginPage } from '../features/login/LoginPage'
 import { AuthCallbackPage } from '../features/auth-callback/AuthCallbackPage'
 import { GithubAnalysisPage } from '../features/onboarding/GithubAnalysisPage'
 import { ProfilePage } from '../features/onboarding/ProfilePage'
@@ -31,7 +32,8 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { path: '/', element: <LandingPage /> }, // SCR001 Landing
-      { path: '/auth/callback', element: <AuthCallbackPage /> }, // SCR002 GitHub 회원가입
+      { path: '/login', element: <LoginPage /> }, // SCR002 GitHub 회원가입(로그인 전 권한 안내)
+      { path: '/auth/callback', element: <AuthCallbackPage /> }, // 로그인 성공 후 백엔드가 돌려보내는 경로
       {
         element: (
           <AuthGuard>

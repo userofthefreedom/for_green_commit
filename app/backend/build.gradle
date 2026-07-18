@@ -47,3 +47,21 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// Phase 2: `./gradlew bootRun`(네이티브 실행)은 컨테이너처럼 .env를 자동으로 읽지 않으므로,
+// 이 프로젝트 폴더의 .env(gitignore 대상)가 있으면 bootRun의 JVM 프로세스 환경변수로 주입한다.
+// GITHUB_CLIENT_ID/SECRET 같은 값을 로컬 개발에서 별도 export 없이 쓰기 위한 장치.
+tasks.named('bootRun') {
+	def envFile = file("${projectDir}/.env")
+	if (envFile.exists()) {
+		envFile.readLines().each { line ->
+			def trimmed = line.trim()
+			if (trimmed && !trimmed.startsWith('#') && trimmed.contains('=')) {
+				def idx = trimmed.indexOf('=')
+				def key = trimmed.substring(0, idx).trim()
+				def value = trimmed.substring(idx + 1).trim()
+				environment(key, value)
+			}
+		}
+	}
+}

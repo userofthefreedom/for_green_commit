@@ -1,15 +1,27 @@
 import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from './AuthContext'
 
 interface AuthGuardProps {
   children: ReactNode
 }
 
-// TODO(Phase 2): 실제 세션 확인 — 지금은 항상 통과시킴 (BR01 게이트 미구현)
 /**
- * SCR003~018을 감싸는 라우트 가드. Phase 1은 pass-through 스텁이라 미인증 상태에서도
- * 모든 화면에 접근할 수 있다. Phase 2에서 AuthContext의 실제 세션 값을 읽어
- * 미인증 시 Landing(`/`)으로 리다이렉트하도록 채운다.
+ * SCR003~018을 감싸는 라우트 가드(BR01). GitHub 로그인이 안 되어 있으면 Landing(`/`)으로
+ * 돌려보낸다. 세션 확인(GET /auth/session) 중에는 잠깐 로딩 표시만 한다.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
+  const { status } = useAuth()
+
+  if (status === 'loading') {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted, #5c6b62)' }}>
+        로그인 확인 중…
+      </div>
+    )
+  }
+  if (status === 'anonymous') {
+    return <Navigate to="/" replace />
+  }
   return <>{children}</>
 }

@@ -16,7 +16,7 @@ export function LandingPage() {
         </p>
         <div className="center row" style={{ justifyContent: 'center' }}>
           <Link
-            to="/auth/callback"
+            to="/login"
             className="btn lg"
             style={{ background: '#fff', color: 'var(--green-d)', border: 'none', fontWeight: 700 }}
           >

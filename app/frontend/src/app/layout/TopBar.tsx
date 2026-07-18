@@ -1,4 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
+import { useAuth } from '../AuthContext'
 
 const NAV_ITEMS = [
   { to: '/recommend/repositories', label: '미션 찾기' },
@@ -14,6 +15,8 @@ const NAV_ITEMS = [
  * 보이지 않게 UI 요소만 유지하고 집계 로직은 만들지 않는다.
  */
 export function TopBar() {
+  const { status, user, logout } = useAuth()
+
   return (
     <header className="topbar">
       <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -45,7 +48,20 @@ export function TopBar() {
       <Link to="/notifications" className="bell" title="알림 보관함">
         🔔<span className="bdot">2</span>
       </Link>
-      <div className="avatar">J</div>
+      {status === 'authenticated' && user ? (
+        <button
+          className="avatar"
+          title={`${user.githubLogin} · 로그아웃`}
+          onClick={() => void logout()}
+          style={{ border: 'none', cursor: 'pointer', backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : undefined, backgroundSize: 'cover' }}
+        >
+          {!user.avatarUrl && user.githubLogin.charAt(0).toUpperCase()}
+        </button>
+      ) : (
+        <Link to="/login" className="btn sm">
+          로그인
+        </Link>
+      )}
     </header>
   )
 }

@@ -12,14 +12,16 @@ import com.greencommit.backend.identity.repository.GitHubAccountRepository;
 import com.greencommit.backend.identity.repository.OAuthCredentialRepository;
 import com.greencommit.backend.identity.repository.UserRepository;
 import java.time.Instant;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * F001/BR01: GitHub 계정 필수 회원가입. Phase 1에서는 실제 OAuth2 Authorization Code 교환 없이
- * 콜백 payload를 신뢰해 User/GitHubAccount/OAuthCredential/Consent를 upsert하는 스텁 흐름이다.
- * TODO(Phase 2, 팀 확인 후 구현): Spring Security OAuth2 Client로 실제 GitHub 로그인 게이트 연결.
+ * F001/BR01: GitHub 계정 필수 회원가입.
+ * `handleGithubCallback`은 Phase 1에서 만든 수동 테스트용 스텁 경로(실제 토큰 없이 upsert)이고,
+ * `handleGithubLogin`은 Phase 2의 실제 Spring Security OAuth2 로그인 흐름(GithubOAuth2UserService)이
+ * 호출하는 진짜 경로로, 실제 access token/scope를 저장한다. 두 경로 모두 같은 upsert 로직을 공유한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -32,22 +34,45 @@ public class AuthService {
 
     @Transactional
     public UserResponse handleGithubCallback(GitHubCallbackRequest request) {
+        User savedUser = upsertIdentity(request.githubId(), request.githubLogin(), request.email(),
+                request.displayName(), request.avatarUrl(), request.publicReposCount(), request.followers());
+        upsertCredential(savedUser, "stub-access-token", "public_repo read:user");
+        return toResponse(savedUser);
+    }
+
+    /** Phase 2: 실제 GitHub OAuth2 로그인 성공 시 {@link com.greencommit.backend.common.security.GithubOAuth2UserService}가 호출. */
+    @Transactional
+    public UserResponse handleGithubLogin(Long githubId, String githubLogin, String email, String displayName,
+            String avatarUrl, Integer publicReposCount, Integer followers, String accessToken, String scope) {
+        User savedUser = upsertIdentity(githubId, githubLogin, email, displayName, avatarUrl, publicReposCount,
+                followers);
+        upsertCredential(savedUser, accessToken, scope);
+        return toResponse(savedUser);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UserResponse> findByGithubId(Long githubId) {
+        return userRepository.findByGithubId(githubId).map(this::toResponse);
+    }
+
+    private User upsertIdentity(Long githubId, String githubLogin, String email, String displayName,
+            String avatarUrl, Integer publicReposCount, Integer followers) {
         Instant now = Instant.now();
-        User user = userRepository.findByGithubId(request.githubId())
+        User user = userRepository.findByGithubId(githubId)
                 .map(existing -> {
-                    existing.setGithubLogin(request.githubLogin());
-                    existing.setEmail(request.email());
-                    existing.setDisplayName(request.displayName());
-                    existing.setAvatarUrl(request.avatarUrl());
+                    existing.setGithubLogin(githubLogin);
+                    existing.setEmail(email);
+                    existing.setDisplayName(displayName);
+                    existing.setAvatarUrl(avatarUrl);
                     existing.setUpdatedAt(now);
                     return existing;
                 })
                 .orElseGet(() -> User.builder()
-                        .githubId(request.githubId())
-                        .githubLogin(request.githubLogin())
-                        .email(request.email())
-                        .displayName(request.displayName())
-                        .avatarUrl(request.avatarUrl())
+                        .githubId(githubId)
+                        .githubLogin(githubLogin)
+                        .email(email)
+                        .displayName(displayName)
+                        .avatarUrl(avatarUrl)
                         .createdAt(now)
                         .updatedAt(now)
                         .build());
@@ -55,20 +80,13 @@ public class AuthService {
 
         GitHubAccount account = gitHubAccountRepository.findByUserId(savedUser.getId())
                 .orElseGet(() -> GitHubAccount.builder().user(savedUser).build());
-        account.setGithubUserId(request.githubId());
-        account.setLogin(request.githubLogin());
-        account.setProfileUrl("https://github.com/" + request.githubLogin());
-        account.setPublicReposCount(request.publicReposCount());
-        account.setFollowers(request.followers());
+        account.setGithubUserId(githubId);
+        account.setLogin(githubLogin);
+        account.setProfileUrl("https://github.com/" + githubLogin);
+        account.setPublicReposCount(publicReposCount);
+        account.setFollowers(followers);
         account.setConnectedAt(now);
         gitHubAccountRepository.save(account);
-
-        OAuthCredential credential = oAuthCredentialRepository.findByUserId(savedUser.getId())
-                .orElseGet(() -> OAuthCredential.builder().user(savedUser).provider("github").build());
-        // Phase 1 스텁: 실제 토큰이 없으므로 placeholder만 저장한다 (Phase 2에서 실제 토큰으로 대체).
-        credential.setAccessToken("stub-access-token");
-        credential.setScope("public_repo read:user");
-        oAuthCredentialRepository.save(credential);
 
         if (consentRepository.findByUserId(savedUser.getId()).isEmpty()) {
             consentRepository.save(Consent.builder()
@@ -85,7 +103,15 @@ public class AuthService {
                     .build());
         }
 
-        return toResponse(savedUser);
+        return savedUser;
+    }
+
+    private void upsertCredential(User user, String accessToken, String scope) {
+        OAuthCredential credential = oAuthCredentialRepository.findByUserId(user.getId())
+                .orElseGet(() -> OAuthCredential.builder().user(user).provider("github").build());
+        credential.setAccessToken(accessToken);
+        credential.setScope(scope);
+        oAuthCredentialRepository.save(credential);
     }
 
     private UserResponse toResponse(User user) {
