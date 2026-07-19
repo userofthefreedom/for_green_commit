@@ -1,0 +1,368 @@
+// Green Commit MVP ERD — dbdiagram.io에 붙여넣기
+// 생성 기준: commit e91bb73, 기획서 v1.1
+
+// [MVP 사용중] 테이블 21개 + [향후활성화, 이미 DB에 존재] 테이블 19개 = 40개 전부 포함
+
+Table users {
+  id uuid [pk]
+  github_id int
+  github_login varchar
+  email varchar
+  display_name varchar
+  avatar_url varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table github_accounts {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  github_user_id int
+  login varchar
+  profile_url varchar
+  public_repos_count int
+  followers int
+  connected_at timestamp
+}
+
+Table consents {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  consent_type varchar
+  granted boolean
+  granted_at timestamp
+}
+
+Table oauth_credentials {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  provider varchar
+  access_token varchar
+  refresh_token varchar
+  scope varchar
+  expires_at timestamp
+}
+
+Table skill_profiles {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  analyzed_languages varchar
+  user_adjusted_skills varchar
+  experience_level varchar
+  git_pr_confidence int
+  updated_at timestamp
+}
+
+Table preferences {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  first_time_contributor boolean
+  interest_areas varchar
+  contribution_types varchar
+  weekly_hours int
+  updated_at timestamp
+}
+
+Table ide_preferences {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  primary_ide varchar
+}
+
+Table tutorial_progress {
+  id uuid [pk]
+  user_id uuid [ref: - users.id]
+  completed boolean
+  skipped boolean
+  current_step varchar
+  completed_at timestamp
+  updated_at timestamp
+}
+
+Table repositories {
+  id uuid [pk]
+  owner_login varchar
+  name varchar
+  full_name varchar
+  description varchar
+  primary_language varchar
+  topics varchar
+  repo_url varchar
+  public_benefit_summary varchar
+  recent_activity_summary varchar
+  contribution_docs_quality varchar
+  external_pr_responsiveness varchar
+  avg_feedback_hours int
+  fit_score float
+  caution_note varchar
+  stars int
+  created_at timestamp
+}
+
+Table issues {
+  id uuid [pk]
+  repository_id uuid [ref: > repositories.id]
+  number int
+  title varchar
+  url varchar
+  summary varchar
+  contribution_type varchar
+  estimated_scope varchar
+  difficulty varchar
+  assignee varchar
+  linked_pr_url varchar
+  last_updated_at timestamp
+  state varchar
+}
+
+Table issue_profiles {
+  id uuid [pk]
+  issue_id uuid [ref: - issues.id]
+  current_problem varchar
+  expected_outcome varchar
+  completion_criteria varchar
+  created_at timestamp
+}
+
+Table recommendations {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  repository_id uuid [ref: > repositories.id]
+  score float
+  rank int
+  created_at timestamp
+}
+
+Table recommendation_evidences {
+  id uuid [pk]
+  recommendation_id uuid [ref: > recommendations.id]
+  evidence_type varchar
+  source_url varchar
+  description varchar
+  rule_name varchar
+  captured_at timestamp
+}
+
+Table contribution_missions {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  repository_id uuid [ref: > repositories.id]
+  issue_id uuid [ref: > issues.id]
+  title varchar
+  status varchar
+  created_at timestamp
+}
+
+Table journey_sessions {
+  id uuid [pk]
+  mission_id uuid [ref: - contribution_missions.id]
+  status varchar
+  started_at timestamp
+  completed_at timestamp
+}
+
+Table journey_steps {
+  id uuid [pk]
+  session_id uuid [ref: > journey_sessions.id]
+  step_type varchar
+  sequence int
+  state varchar
+  mode varchar
+  updated_at timestamp
+}
+
+Table journey_checkpoints {
+  id uuid [pk]
+  session_id uuid [ref: > journey_sessions.id]
+  step_type varchar
+  checkpoint_data varchar
+  created_at timestamp
+}
+
+Table automation_executions {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  session_id uuid [ref: > journey_sessions.id]
+  automation_type varchar
+  status varchar
+  requested_at timestamp
+  completed_at timestamp
+  result_detail varchar
+}
+
+Table ide_launch_attempts {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  ide varchar
+  deep_link_url varchar
+  launched_at timestamp
+  succeeded boolean
+}
+
+Table pull_request_links {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  session_id uuid [ref: > journey_sessions.id]
+  repo_owner varchar
+  repo_name varchar
+  pr_number int
+  pr_url varchar
+  created_at timestamp
+}
+
+Table contribution_histories {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  pr_link_id uuid [ref: > pull_request_links.id]
+  journey_summary varchar
+  created_at timestamp
+}
+
+Table repository_snapshots {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  repository_id uuid [ref: > repositories.id]
+  snapshot_at timestamp
+  stars_count int
+  open_issues_count int
+  last_commit_at timestamp
+  raw_metadata_json varchar
+}
+
+Table contribution_rules {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  name varchar
+  description varchar
+  rule_type varchar
+  weight float
+  active boolean
+}
+
+Table graph_paths {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  recommendation_id uuid [ref: > recommendations.id]
+  path_json varchar
+  created_at timestamp
+}
+
+Table step_preferences {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  step_type varchar
+  default_skip boolean
+  default_mode varchar
+}
+
+Table git_operation_checkpoints {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  session_id uuid [ref: > journey_sessions.id]
+  operation varchar
+  checkpoint_at timestamp
+  note varchar
+}
+
+Table questions {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  session_id uuid [ref: > journey_sessions.id]
+  question_text varchar
+  depth int
+  created_at timestamp
+}
+
+Table answers {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  question_id uuid [ref: > questions.id]
+  answer_text varchar
+  created_at timestamp
+}
+
+Table hints {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  question_id uuid [ref: > questions.id]
+  hint_text varchar
+  level int
+}
+
+Table contribution_plans {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  session_id uuid [ref: > journey_sessions.id]
+  plan_text varchar
+  created_at timestamp
+}
+
+Table growth_evidences {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  session_id uuid [ref: > journey_sessions.id]
+  evidence_text varchar
+  created_at timestamp
+}
+
+Table pr_status_snapshots {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  pr_link_id uuid [ref: > pull_request_links.id]
+  state varchar
+  merged boolean
+  checked_at timestamp
+}
+
+Table review_events {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  pr_link_id uuid [ref: > pull_request_links.id]
+  reviewer varchar
+  event_type varchar
+  created_at timestamp
+}
+
+Table polling_jobs {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  pr_link_id uuid [ref: > pull_request_links.id]
+  cron_expression varchar
+  last_run_at timestamp
+  active boolean
+}
+
+Table notifications {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  message varchar
+  is_read boolean
+  created_at timestamp
+}
+
+Table next_mission_recommendations {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  suggestion_text varchar
+  created_at timestamp
+}
+
+Table orchestration_runs {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  input_summary varchar
+  output_summary varchar
+  created_at timestamp
+}
+
+Table local_analysis_results {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  repository_id uuid [ref: > repositories.id]
+  result_json varchar
+  created_at timestamp
+}
+
+Table retrieval_evidences {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  orchestration_run_id uuid [ref: > orchestration_runs.id]
+  source_url varchar
+  snippet varchar
+  created_at timestamp
+}
+
+Table ai_execution_logs {  // 향후활성화(F###는 데이터사전 탭 참고)
+  id uuid [pk]
+  orchestration_run_id uuid [ref: > orchestration_runs.id]
+  model_name varchar
+  prompt_summary varchar
+  created_at timestamp
+}
