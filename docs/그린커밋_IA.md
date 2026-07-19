@@ -32,15 +32,19 @@ router.tsx 기준 실제 라우트 18개(로그인 전 3개 `/`,`/login`,`/auth/
          │
          ├─ /recommend/repositories (SCR006 추천)
          │  └─ /recommend/issues (SCR007 이슈 선택)
-         │     └─ [POST /journeys] /journey/overview (SCR008 Journey 개요)
-         │        └─ /journey/fork (SCR009 Fork·Clone 통합)
-         │           └─ /journey/brief (SCR010 Repo·Issue Brief)
-         │              └─ /journey/coach (SCR011 질문 Coach)
-         │                 └─ /journey/ship (SCR012 Commit·PR)
-         │                    └─ [PR 등록] /journey/monitoring (SCR013 Monitoring)
-         │                       └─ /journey/result (SCR014 결과)
-         │                          ├─ → /recommend/repositories (다음 미션)
-         │                          └─ → /contributions (기록 보기)
+         │     └─ [POST /journeys] /journey/overview (SCR008 Journey 개요 — 단계별 스킵 기본값 토글)
+         │        └─ /journey/fork (SCR009 Fork·Clone 통합) [SKIP 가능 — BR05]
+         │           │  ⚡ 자동화 첫 클릭 시 동의 모달(FORK_AUTOMATION Consent, REQ-015)
+         │           └─ /journey/brief (SCR010 Repo·Issue Brief) [SKIP 가능 — BR05]
+         │              └─ /journey/coach (SCR011 질문 Coach) [SKIP 가능 — BR05]
+         │                 └─ /journey/ship (SCR012 Commit·PR) [SKIP 가능 — BR05, 단 스킵 시 PR
+         │                    │  미등록 상태로 Journey 종료(MONITORING 미진입), 아래로]
+         │                    ├─ [PR 등록] /journey/monitoring (SCR013 Monitoring, "추적 해제"만
+         │                    │   가능·스킵 아님) → /journey/result (SCR014 결과)
+         │                    │      ├─ → /recommend/repositories (다음 미션)
+         │                    │      └─ → /contributions (기록 보기)
+         │                    └─ [스킵=PR 미등록] → /recommend/repositories (다음 미션, 결과 화면
+         │                        건너뜀 — REQ-027 참고)
          │
          └─ 전역 메뉴(TopBar NAV_ITEMS, 4개 — 어느 화면에서든 접근 가능)
             ├─ /recommend/repositories (SCR006, "미션 찾기") — 위 Journey 트리와 동일 화면
@@ -98,6 +102,11 @@ flowchart TD
     Result -.->|"다음 미션"| Recommend
     Result -.->|"기록 보기"| MyContrib
 
+    ForkClone -.->|"SKIP(BR05)"| Brief
+    Brief -.->|"SKIP(BR05)"| Coach
+    Coach -.->|"SKIP(BR05)"| Ship
+    Ship -.->|"SKIP(BR05)<br/>PR 미등록으로 종료"| Recommend
+
     Recommend -.->|"전역 메뉴"| Notif
     Recommend -.->|"전역 메뉴"| MyContrib
     Recommend -.->|"전역 메뉴"| Settings
@@ -110,6 +119,10 @@ flowchart TD
     class Analysis,Profile,Tutorial,Recommend,IssueSel,Overview,ForkClone,Brief,Coach,Ship,Monitor,Result,MyContrib scope
     class Notif,Settings outofscope
 ```
+
+**스킵 경로 참고**: 점선의 `SKIP(BR05)` 화살표는 실제 스킵 버튼이 있는 4개 화면(ForkClone·Brief·
+Coach·Ship, 요구사항정의서 REQ-014 매트릭스와 일치)만 표시했다 — 순방향 진행 화살표와 목적지가 같아
+보이지만(다음 화면으로 이동), Ship만은 예외로 스킵 시 Monitor를 거치지 않고 곧장 Recommend로 간다.
 
 **범례**: 파란색 = 로그인 전 구간 · 초록색 = MVP로 실제 구현된 구간 · 회색 점선 = 범위밖(화면은 있으나 장식/mock)
 
@@ -152,10 +165,21 @@ flowchart TD
 - **깊이(Depth)**: 로그인 전 1단계(Landing→Login) → 온보딩 3단계(분석→프로필→튜토리얼, 분기 있음) →
   추천~결과 9단계 선형 Journey → 상시 메뉴 4개(미션찾기/알림/기여/설정)는 깊이 1로 항상 접근 가능.
   전체적으로 "깊이보다 길이"가 긴 구조 — 트리가 아니라 파이프라인에 가까움.
-- **재방문 경로가 설계에 없음** [코드-스펙 괴리][중대, 2026-07-20 추가]: OAuth 콜백(AuthCallbackPage)은
+- **재방문 경로가 설계에 없음** [코드-스펙 괴리][중대]: OAuth 콜백(AuthCallbackPage)은 현재 코드상
   신규/기존 사용자를 구분하지 않고 항상 SCR003(GitHub 분석)으로 보낸다. 저장된 프로필을 재조회하는
   GET이 없어 SCR004는 매번 빈 폼으로 뜨고, TutorialProgress를 저장해도(POST /tutorial/progress) 읽는
   API를 프론트가 호출하지 않아 BR03 분기가 로그인할 때마다 처음부터 다시 실행된다 — 이미 튜토리얼을
   마친 첫 기여자도 재로그인하면 튜토리얼을 또 보게 된다. 이 사이트맵엔 "재방문 시 랜딩 지점"(홈/
-  대시보드) 자체가 없다는 구조적 공백이 있다. [설계제안] 콜백에서 온보딩 완료 여부로 분기해 기존
-  사용자는 SCR006(추천)으로 직행시킬 것 — 요구사항정의서 REQ-003 참고.
+  대시보드) 자체가 없다는 구조적 공백이 있다. [정정 2026-07-20, 요구사항으로 승격] 3차(traceability)
+  재평가 전까지는 이 해법이 [설계제안]으로만 남아 있었으나, 이제 요구사항정의서 REQ-003 기능 칸에
+  "콜백은 온보딩 완료 여부를 조회해 기존 사용자를 SCR006으로 직행"을 실제 요구로 명시했다.
+- **스킵 가능 구간(BR05)과 그 예외** [정정 2026-07-20]: 위 사이트맵에서 `[SKIP 가능]`으로 표시한
+  SCR009(Fork·Clone)·SCR010(Brief)·SCR011(Coach)·SCR012(Commit·PR) 4곳에만 실제 스킵 버튼이 있다
+  (부록B는 9단계 전부를 말하지만, MVP는 이 4개 화면 단위로 스킵을 묶는다 — 요구사항정의서 REQ-014
+  매트릭스가 이 4곳과 정확히 일치하도록 상호참조돼 있음). SCR012의 스킵만 예외적으로 조심할 지점 —
+  "PR 등록 검증은 생략 불가"(BR05)처럼 읽힐 수 있으나 실제로는 "PR 미등록 상태로 Journey를 그냥
+  끝낸다"는 뜻이며, MONITORING·RESULT 화면 자체에 들어가지 않는다(REQ-027 참고). SCR013(Monitoring)은
+  스킵이 아니라 "추적 해제" 개념이라 이 목록에서 제외했다(부록B-9).
+- **자동화 동의 모달** [정정 2026-07-20]: SCR009의 "⚡ 이 단계 자동화하기" 버튼을 처음 누르면 별도
+  동의 모달(FORK_AUTOMATION Consent 확인)이 뜬다 — SCR002(로그인)에서는 이 동의를 받지 않는다는 뜻
+  이라 트리에 함께 표기했다(REQ-015 참고).

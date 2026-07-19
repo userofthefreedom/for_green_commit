@@ -76,6 +76,7 @@ Table tutorial_progress {
   skipped boolean
   current_step varchar
   completed_at timestamp
+  skip_reason varchar
   updated_at timestamp
 }
 
@@ -93,6 +94,7 @@ Table repositories {
   contribution_docs_quality varchar
   external_pr_responsiveness varchar
   avg_feedback_hours int
+  maintainer_response_metric_source varchar
   fit_score float
   caution_note varchar
   stars int
@@ -208,6 +210,7 @@ Table pull_request_links {
   pr_number int
   pr_url varchar
   created_at timestamp
+  github_created_at timestamp
 }
 
 Table contribution_histories {
@@ -244,7 +247,7 @@ Table graph_paths {  // 향후활성화(F###는 데이터사전 탭 참고)
   created_at timestamp
 }
 
-Table step_preferences {  // 향후활성화(F###는 데이터사전 탭 참고)
+Table step_preferences {  // [정정 2026-07-20] MVP 사용 시작(데이터사전 탭 참고)
   id uuid [pk]
   user_id uuid [ref: > users.id]
   step_type varchar
@@ -297,7 +300,7 @@ Table growth_evidences {  // 향후활성화(F###는 데이터사전 탭 참고)
   created_at timestamp
 }
 
-Table pr_status_snapshots {  // 향후활성화(F###는 데이터사전 탭 참고)
+Table pr_status_snapshots {  // [정정 2026-07-20] MVP 사용 시작(데이터사전 탭 참고)
   id uuid [pk]
   pr_link_id uuid [ref: > pull_request_links.id]
   state varchar
