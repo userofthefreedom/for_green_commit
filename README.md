@@ -41,7 +41,7 @@ PostgreSQL+pgvector / Redis / Neo4j / MinIO / Docker
    ```
 4. AI 서비스 실행:
    ```bash
-   cd app/ai && py -3.12 -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt && uvicorn app.main:app --reload
+   cd app/ai && py -3.12 -m venv .venv && .venv/Scripts/activate && pip install -r requirements.txt && uvicorn app.main:app --reload
    ```
 5. 프론트엔드 실행:
    ```bash
