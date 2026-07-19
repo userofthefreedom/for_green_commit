@@ -12,7 +12,7 @@ GitHub Journey(Fork → Clone → Repo/Issue 분석 → 학습 → Commit/PR →
 ## 문서
 - [`docs/그린커밋_WEB_서비스_기획서_v0.6.2.docx`](docs/그린커밋_WEB_서비스_기획서_v0.6.2.docx) — 기획서 원본
 - [`docs/green-commit-prototype-v3.html`](docs/green-commit-prototype-v3.html) — 이전 프로토타입(mock)
-- [`docs/setup-guide.txt`](docs/setup-guide.txt) — 로컬 개발 환경(Java 21·Python 3.12 등) 설치 가이드
+- [`docs/setup-guide.txt`](docs/setup-guide.txt) — 로컬 개발 환경 설치·실행 가이드 (Git·Docker·Node.js·Java 21·Python 3.12부터 4개 앱 실행까지, 완전 초보자용)
 - [`docs/github-oauth-app-guide.txt`](docs/github-oauth-app-guide.txt) — GitHub OAuth App 발급 가이드 (BR01 로그인 게이트에 필요)
 - [`CLAUDE.md`](CLAUDE.md) — 프로젝트 공통 규칙 / 코드 컨벤션
 
