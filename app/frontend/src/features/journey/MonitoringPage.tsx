@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useJourney } from '../../app/JourneyContext'
+import { getRepositoryRecommendations } from '../../lib/api/endpoints'
 
 const STATE_COPY: Record<string, { label: string; tone: 'g' | 'a' | 'b' }> = {
   MERGED: { label: '✅ Merged — 반영됐어요!', tone: 'g' },
@@ -18,7 +20,18 @@ const STATE_COPY: Record<string, { label: string; tone: 'g' | 'a' | 'b' }> = {
  */
 export function MonitoringPage() {
   const navigate = useNavigate()
-  const { journey, pullRequest, updateStep } = useJourney()
+  const { journey, meta, pullRequest, updateStep } = useJourney()
+  const [avgFeedbackHours, setAvgFeedbackHours] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!meta) return
+    getRepositoryRecommendations()
+      .then((repos) => {
+        const repo = repos.find((r) => r.repositoryId === meta.repositoryId)
+        setAvgFeedbackHours(repo?.avgFeedbackHours ?? null)
+      })
+      .catch(() => {})
+  }, [meta])
 
   async function goToResult() {
     if (journey) await updateStep('MONITORING', { action: 'COMPLETE' })
@@ -68,6 +81,32 @@ export function MonitoringPage() {
           GitHub에서 PR 원문 보기 ↗
         </a>
       </div>
+
+      {pullRequest.status.state === 'OPEN' && avgFeedbackHours != null && (
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="eyebrow">⏳ 기다리는 동안</div>
+          {(() => {
+            const elapsedHours = Math.max(
+              0,
+              Math.round((Date.now() - new Date(pullRequest.link.createdAt).getTime()) / 3_600_000),
+            )
+            const stillWithinAverage = elapsedHours < avgFeedbackHours
+            return (
+              <>
+                <p style={{ margin: '4px 0 0' }}>
+                  이 레포는 평균적으로 <b>{avgFeedbackHours}시간</b> 안에 첫 피드백을 줘요. 지금{' '}
+                  <b>{elapsedHours}시간째</b> 기다리는 중이에요.
+                </p>
+                <p className="muted" style={{ fontSize: 13, margin: '8px 0 0' }}>
+                  {stillWithinAverage
+                    ? '아직 평균 응답 시간 이내예요 — 조금 더 기다려보세요.'
+                    : '평균 응답 시간은 지났지만, 메인테이너마다 편차가 있어요. 조금 더 기다리거나 다른 레포 미션을 하나 더 진행해봐도 좋아요.'}
+                </p>
+              </>
+            )
+          })()}
+        </div>
+      )}
 
       <div className="card" style={{ marginTop: 18 }}>
         <div className="eyebrow">이 화면이 나중에 보여줄 것 (F017, 필수 확장)</div>

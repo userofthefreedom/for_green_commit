@@ -10,8 +10,7 @@ import { TutorialPage } from '../features/onboarding/TutorialPage'
 import { RepositoryRecommendationPage } from '../features/recommendation/RepositoryRecommendationPage'
 import { IssueSelectionPage } from '../features/recommendation/IssueSelectionPage'
 import { JourneyOverviewPage } from '../features/journey/JourneyOverviewPage'
-import { ForkPage } from '../features/journey/ForkPage'
-import { ClonePage } from '../features/journey/ClonePage'
+import { ForkClonePage } from '../features/journey/ForkClonePage'
 import { BriefPage } from '../features/journey/BriefPage'
 import { CoachPage } from '../features/journey/CoachPage'
 import { ShipPage } from '../features/journey/ShipPage'
@@ -47,8 +46,7 @@ export const router = createBrowserRouter([
           { path: '/recommend/repositories', element: <RepositoryRecommendationPage /> }, // SCR006
           { path: '/recommend/issues', element: <IssueSelectionPage /> }, // SCR007 Issue 선택
           { path: '/journey/overview', element: <JourneyOverviewPage /> }, // SCR008 Journey 개요 (신규)
-          { path: '/journey/fork', element: <ForkPage /> }, // SCR009 Fork
-          { path: '/journey/clone', element: <ClonePage /> }, // SCR010 Clone·IDE Handoff
+          { path: '/journey/fork', element: <ForkClonePage /> }, // SCR009+SCR010 Fork·Clone 통합(2026-07-19 사용자 결정)
           { path: '/journey/brief', element: <BriefPage /> }, // SCR011 Repo·Issue Brief
           { path: '/journey/coach', element: <CoachPage /> }, // SCR012 질문 Coach
           { path: '/journey/ship', element: <ShipPage /> }, // SCR013 Commit·PR

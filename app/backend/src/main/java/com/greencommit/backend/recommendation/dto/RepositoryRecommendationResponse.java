@@ -15,6 +15,7 @@ public record RepositoryRecommendationResponse(
         String recentActivitySummary,
         String contributionDocsQuality,
         String externalPrResponsiveness,
+        Integer avgFeedbackHours,
         Double fitScore,
         String cautionNote,
         Integer stars,

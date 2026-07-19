@@ -2,8 +2,7 @@ import { useLocation } from 'react-router-dom'
 
 const MACRO_STEPS = [
   { key: 'overview', label: 'Journey 개요', path: '/journey/overview' },
-  { key: 'fork', label: 'Fork', path: '/journey/fork' },
-  { key: 'clone', label: 'Clone·환경', path: '/journey/clone' },
+  { key: 'fork', label: 'Fork·Clone', path: '/journey/fork' },
   { key: 'brief', label: 'Repo·Issue Brief', path: '/journey/brief' },
   { key: 'coach', label: '질문 Coach', path: '/journey/coach' },
   { key: 'ship', label: 'Commit·PR', path: '/journey/ship' },

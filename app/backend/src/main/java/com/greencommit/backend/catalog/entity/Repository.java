@@ -66,9 +66,16 @@ public class Repository {
     @Column(name = "contribution_docs_quality")
     private String contributionDocsQuality;
 
-    /** 외부 PR 응답성. */
+    /** 외부 PR 응답성 (사람이 읽는 설명). */
     @Column(name = "external_pr_responsiveness")
     private String externalPrResponsiveness;
+
+    /**
+     * 평균 첫 피드백까지 걸리는 시간(시간 단위). 추천 가산점(F006)과 PR 등록 후 기대치 안내에
+     * 쓴다. 실제 GitHub 통계 자동 집계(F017)는 Phase 99 보류라, 지금은 seed 값을 수동으로 둔다.
+     */
+    @Column(name = "avg_feedback_hours")
+    private Integer avgFeedbackHours;
 
     /** 사용자 적합도 점수(0~100). 추천 랭킹(F006)에 사용. */
     @Column(name = "fit_score")

@@ -26,6 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * F006: 개인화 Repository 추천. Phase 1 스코어링은 seed Repository의 fitScore를 기본값으로 쓰고,
  * userId가 있으면 Preference.interestAreas와 topics가 겹칠 때 소폭 가산하는 단순 규칙 기반이다.
+ * 2026-07-19 사용자 결정: 여기에 PR 평균 피드백 시간(avgFeedbackHours) 가산점을 추가한다 —
+ * "머지/피드백까지 오래 기다리는 게 이 서비스의 가장 큰 약점"이라는 피드백에 따라, 응답이 빠른
+ * 레포에 소폭의 가산점을 줘 추천 순위에 반영한다. 실제 GitHub 통계 자동 집계(F017)는 Phase 99
+ * 보류이고, 지금은 seed의 정적 avgFeedbackHours 값을 기준으로 한다.
  * TODO(Phase 99, 팀 확인 후 구현): Neo4j Knowledge Graph 기반 추천 근거(F020)로 교체.
  */
 @Service
@@ -33,6 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecommendationService {
 
     private static final double INTEREST_MATCH_BONUS = 5.0;
+    private static final double FAST_FEEDBACK_BONUS = 8.0;
+    private static final double MODERATE_FEEDBACK_BONUS = 4.0;
+    private static final int FAST_FEEDBACK_HOURS = 24;
+    private static final int MODERATE_FEEDBACK_HOURS = 48;
 
     private final RepositoryJpaRepository repositoryRepository;
     private final UserRepository userRepository;
@@ -46,15 +54,16 @@ public class RecommendationService {
         List<String> interestAreas = resolveInterestAreas(userId);
         Optional<User> user = userId == null ? Optional.empty() : userRepository.findById(userId);
 
-        record Scored(Repository repository, double score, boolean interestMatch) {
+        record Scored(Repository repository, double score, boolean interestMatch, double feedbackBonus) {
         }
 
         List<Scored> scored = new ArrayList<>();
         for (Repository repository : repositories) {
             double base = repository.getFitScore() == null ? 0.0 : repository.getFitScore();
             boolean matched = matchesInterest(repository, interestAreas);
-            double score = matched ? base + INTEREST_MATCH_BONUS : base;
-            scored.add(new Scored(repository, score, matched));
+            double feedbackBonus = feedbackBonus(repository.getAvgFeedbackHours());
+            double score = base + (matched ? INTEREST_MATCH_BONUS : 0.0) + feedbackBonus;
+            scored.add(new Scored(repository, score, matched, feedbackBonus));
         }
         scored.sort(Comparator.comparingDouble(Scored::score).reversed());
 
@@ -99,6 +108,21 @@ public class RecommendationService {
                         interestEvidence.getDescription(), interestEvidence.getRuleName()));
             }
 
+            if (item.feedbackBonus() > 0) {
+                RecommendationEvidence feedbackEvidence = RecommendationEvidence.builder()
+                        .recommendation(recommendation)
+                        .evidenceType("RULE")
+                        .sourceUrl(item.repository().getRepoUrl())
+                        .description("⚡ 평균 " + item.repository().getAvgFeedbackHours() + "시간 내 피드백 — 가산점 부여")
+                        .ruleName("fast_feedback_bonus")
+                        .capturedAt(now)
+                        .build();
+                recommendationEvidenceRepository.save(feedbackEvidence);
+                evidenceItems.add(new EvidenceItem(
+                        feedbackEvidence.getEvidenceType(), feedbackEvidence.getSourceUrl(),
+                        feedbackEvidence.getDescription(), feedbackEvidence.getRuleName()));
+            }
+
             Repository repository = item.repository();
             result.add(new RepositoryRecommendationResponse(
                     repository.getId(),
@@ -111,6 +135,7 @@ public class RecommendationService {
                     repository.getRecentActivitySummary(),
                     repository.getContributionDocsQuality(),
                     repository.getExternalPrResponsiveness(),
+                    repository.getAvgFeedbackHours(),
                     repository.getFitScore(),
                     repository.getCautionNote(),
                     repository.getStars(),
@@ -131,6 +156,19 @@ public class RecommendationService {
                 .filter(areas -> areas != null && !areas.isBlank())
                 .map(areas -> List.of(areas.toLowerCase(Locale.ROOT).split("\\s*,\\s*")))
                 .orElse(List.of());
+    }
+
+    private double feedbackBonus(Integer avgFeedbackHours) {
+        if (avgFeedbackHours == null) {
+            return 0.0;
+        }
+        if (avgFeedbackHours <= FAST_FEEDBACK_HOURS) {
+            return FAST_FEEDBACK_BONUS;
+        }
+        if (avgFeedbackHours <= MODERATE_FEEDBACK_HOURS) {
+            return MODERATE_FEEDBACK_BONUS;
+        }
+        return 0.0;
     }
 
     private boolean matchesInterest(Repository repository, List<String> interestAreas) {

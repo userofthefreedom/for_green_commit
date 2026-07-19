@@ -53,6 +53,11 @@ export function RepositoryRecommendationPage() {
               <b>{repo.fullName}</b>
               <span className="pill">적합도 {repo.fitScore ?? repo.score}</span>
             </div>
+            {repo.avgFeedbackHours != null && repo.avgFeedbackHours <= 48 && (
+              <span className="pill g" style={{ marginTop: 6, display: 'inline-block' }}>
+                ⚡ {repo.avgFeedbackHours <= 24 ? '빠른 응답' : '비교적 빠른 응답'} · 평균 {repo.avgFeedbackHours}시간
+              </span>
+            )}
             <p className="muted" style={{ fontSize: 13, margin: '8px 0' }}>
               {repo.description}
             </p>

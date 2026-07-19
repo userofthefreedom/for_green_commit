@@ -102,6 +102,7 @@ export interface RepositoryRecommendation {
   recentActivitySummary: string | null
   contributionDocsQuality: string | null
   externalPrResponsiveness: string | null
+  avgFeedbackHours: number | null
   fitScore: number | null
   cautionNote: string | null
   stars: number | null

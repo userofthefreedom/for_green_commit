@@ -289,23 +289,9 @@ export function CoachPage() {
         <>
           <div className="card">
             <div className="eyebrow">🎯 {issue.title} · {issue.no}</div>
-            <b style={{ display: 'block', fontSize: 14 }}>{issue.easy}</b>
-            <table className="kv" style={{ marginTop: 10 }}>
-              <tbody>
-                <tr>
-                  <td>지금 문제</td>
-                  <td>{issue.brief.prob}</td>
-                </tr>
-                <tr>
-                  <td>기대 결과</td>
-                  <td>{issue.brief.expect}</td>
-                </tr>
-                <tr>
-                  <td>완료 기준</td>
-                  <td>{issue.brief.done}</td>
-                </tr>
-              </tbody>
-            </table>
+            <p className="muted" style={{ fontSize: 13, margin: '4px 0 0' }}>
+              Brief에서 배경 지식과 코드 미리보기까지 봤죠? 이제 직접 찾아볼 차례예요.
+            </p>
           </div>
 
           <div className="card" style={{ marginTop: 18 }}>
