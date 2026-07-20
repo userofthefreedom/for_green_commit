@@ -1,7 +1,9 @@
 // Green Commit MVP ERD — dbdiagram.io에 붙여넣기
-// 생성 기준: commit e91bb73, 기획서 v1.1
+// 생성 기준: commit e91bb73, 기획서 v1.2(v1.1 → v1.2 개정: Landing 계정 진입 분리·기존 사용자
+// 로그인 시 계정 상태 복구 반영, BR15·BR16 신설)
 
-// [MVP 사용중] 테이블 21개 + [향후활성화, 이미 DB에 존재] 테이블 19개 = 40개 전부 포함
+// [MVP 사용중] 테이블 21개 + [향후활성화, 이미 DB에 존재] 테이블 19개 = 40개 + [v1.2 설계target,
+// 아직 DB에 없음] login_sessions 1개 = 41개
 
 Table users {
   id uuid [pk]
@@ -23,6 +25,17 @@ Table github_accounts {
   public_repos_count int
   followers int
   connected_at timestamp
+}
+
+Table login_sessions {  // [v1.2 설계target] 신규 — Identity 도메인, 아직 DB·코드에 없음(BR16, 기획서 V-3)
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  github_account_id uuid [ref: > github_accounts.id]
+  session_type varchar // SIGNUP(신규 회원가입) / LOGIN(기존 계정 로그인)
+  restored_journey_count int // 로그인 시 복구된 진행 중 Journey 수(account_state_restored 분석 이벤트와 대응)
+  restored_pr_count int
+  restored_history_count int
+  logged_in_at timestamp
 }
 
 Table consents {
