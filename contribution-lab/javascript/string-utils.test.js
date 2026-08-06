@@ -15,6 +15,7 @@ assert.equal(
 assert.equal(normalizeWhitespace(""), "");
 assert.equal(countWords("first open source contribution"), 4);
 assert.equal(countWords("   "), 0);
+assert.equal(countWords("first,\nsecond\tthird"), 3);
 
 assert.throws(
   () => normalizeWhitespace(null),
