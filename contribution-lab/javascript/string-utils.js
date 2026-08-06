@@ -40,8 +40,23 @@ function isBlank(text) {
   return normalizeWhitespace(text) === "";
 }
 
+/**
+ * Reverse the words in a string.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function reverseWords(text) {
+  const normalized = normalizeWhitespace(text);
+  if (normalized === "") {
+    return "";
+  }
+  return normalized.split(" ").reverse().join(" ");
+}
+
 module.exports = {
   normalizeWhitespace,
   countWords,
   isBlank,
+  reverseWords,
 };

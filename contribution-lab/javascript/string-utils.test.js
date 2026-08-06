@@ -5,6 +5,7 @@ const {
   normalizeWhitespace,
   countWords,
   isBlank,
+  reverseWords,
 } = require("./string-utils");
 
 assert.equal(
@@ -30,5 +31,11 @@ assert.throws(
   () => isBlank(null),
   TypeError
 );
+
+assert.equal(
+  reverseWords("first open source contribution"),
+  "contribution source open first"
+);
+assert.equal(reverseWords(""), "");
 
 console.log("JavaScript tests passed.");
