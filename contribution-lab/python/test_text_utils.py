@@ -28,6 +28,13 @@ class TextUtilsTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             normalize_whitespace(None)  # type: ignore[arg-type]
 
+    def test_truncate(self) -> None:
+        from text_utils import truncate
+        self.assertEqual(truncate("open source contribution", 10), "open sourc...")
+        self.assertEqual(truncate("hi", 10), "hi")
+        with self.assertRaises(TypeError):
+            truncate(None, 10)  # type: ignore[arg-type]
+
 
 if __name__ == "__main__":
     unittest.main()

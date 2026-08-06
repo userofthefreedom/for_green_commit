@@ -17,3 +17,12 @@ def count_words(text: str) -> int:
         return 0
 
     return len(normalized.split(" "))
+
+
+def truncate(text: str, max_length: int) -> str:
+    """Truncate text to max_length and append ... if needed."""
+    if not isinstance(text, str):
+        raise TypeError("text must be a string")
+    if len(text) > max_length:
+        return text[:max_length] + "..."
+    return text
