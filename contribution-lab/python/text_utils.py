@@ -17,3 +17,12 @@ def count_words(text: str) -> int:
         return 0
 
     return len(normalized.split(" "))
+
+
+def capitalize_first_letter(text: str) -> str:
+    """Capitalize the first letter of the text."""
+    if not isinstance(text, str):
+        raise TypeError("text must be a string")
+    if not text:
+        return text
+    return text[0].upper() + text[1:]

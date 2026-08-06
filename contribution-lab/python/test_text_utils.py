@@ -28,6 +28,13 @@ class TextUtilsTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             normalize_whitespace(None)  # type: ignore[arg-type]
 
+    def test_capitalize_first_letter(self) -> None:
+        from text_utils import capitalize_first_letter
+        self.assertEqual(capitalize_first_letter("open source"), "Open source")
+        self.assertEqual(capitalize_first_letter(""), "")
+        with self.assertRaises(TypeError):
+            capitalize_first_letter(None)  # type: ignore[arg-type]
+
 
 if __name__ == "__main__":
     unittest.main()
