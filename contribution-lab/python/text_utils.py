@@ -17,3 +17,11 @@ def count_words(text: str) -> int:
         return 0
 
     return len(normalized.split(" "))
+
+
+def is_palindrome(text: str) -> bool:
+    """Check if the text is a palindrome, ignoring whitespace and case."""
+    if not isinstance(text, str):
+        raise TypeError("text must be a string")
+    clean_text = text.replace(" ", "").lower()
+    return clean_text == clean_text[::-1]

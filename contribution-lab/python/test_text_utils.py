@@ -28,6 +28,14 @@ class TextUtilsTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             normalize_whitespace(None)  # type: ignore[arg-type]
 
+    def test_is_palindrome(self) -> None:
+        from text_utils import is_palindrome
+        self.assertTrue(is_palindrome("Race car"))
+        self.assertFalse(is_palindrome("hello"))
+        self.assertTrue(is_palindrome(""))
+        with self.assertRaises(TypeError):
+            is_palindrome(None)  # type: ignore[arg-type]
+
 
 if __name__ == "__main__":
     unittest.main()
